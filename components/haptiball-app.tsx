@@ -19,6 +19,7 @@ import { VideoCanvas } from "@/components/video-canvas"
 import { PitchRadar } from "@/components/pitch-radar"
 import { HapticControls } from "@/components/haptic-controls"
 import { EventLog } from "@/components/event-log"
+import { AboutPage } from "@/components/about-page"
 
 const EMPTY_BALL: BallState = { detected: false, nx: 0.5, ny: 0.5, speed: 0, angle: 0, vx: 0, vy: 0 }
 
@@ -50,6 +51,7 @@ export function HaptiBallApp() {
   const [supported, setSupported] = useState(false)
   const [native, setNative] = useState(false)
   const [liveStatus, setLiveStatus] = useState("")
+  const [tab, setTab] = useState<"service" | "about">("service")
   const lastLiveSide = useRef<string | null>(null)
 
   // 엔진 초기화 (클라이언트 마운트 후 — SSR 하이드레이션 방지)
@@ -222,8 +224,9 @@ export function HaptiBallApp() {
       <p aria-live="assertive" className="sr-only">{liveStatus}</p>
 
       {/* 헤더 */}
-      <header className="border-b border-border bg-card px-4 py-4 md:px-8">
-        <div className="mx-auto flex max-w-6xl items-center gap-4">
+      <header className="border-b border-border bg-card px-4 md:px-8">
+        {/* 상단 바 */}
+        <div className="mx-auto flex max-w-6xl items-center gap-4 py-4">
           <div className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-primary" aria-hidden="true">
             <Vibrate className="size-6 text-primary-foreground" />
           </div>
@@ -231,7 +234,6 @@ export function HaptiBallApp() {
             <h1 className="text-xl font-black tracking-tight text-foreground md:text-2xl">HaptiBall</h1>
             <p className="text-sm text-muted-foreground">축구 공을 진동으로 — 시각장애인 접근성 서비스</p>
           </div>
-          {/* 진동 지원 배지 */}
           <div className="ml-auto">
             {native ? (
               <span className="rounded-full bg-primary/15 px-3 py-1 text-xs font-semibold text-primary">네이티브 앱</span>
@@ -242,18 +244,42 @@ export function HaptiBallApp() {
             )}
           </div>
         </div>
+        {/* 탭 */}
+        <nav className="mx-auto flex max-w-6xl gap-1" aria-label="메뉴">
+          {(["service", "about"] as const).map((t) => (
+            <button
+              key={t}
+              role="tab"
+              aria-selected={tab === t}
+              onClick={() => setTab(t)}
+              className={[
+                "relative px-5 py-3 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-t-xl",
+                tab === t
+                  ? "text-primary after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-full after:bg-primary"
+                  : "text-muted-foreground hover:text-foreground",
+              ].join(" ")}
+            >
+              {t === "service" ? "서비스" : "소개 / 기술 스택"}
+            </button>
+          ))}
+        </nav>
       </header>
 
-      {/* 공 위치 상태 배너 — 큰 텍스트로 저시력 사용자에게도 유용 */}
-      <div className={`border-b border-border px-4 py-4 transition-colors md:px-8 ${pulse ? "bg-primary/10" : "bg-card"}`} aria-hidden="true">
-        <div className="mx-auto flex max-w-6xl items-center gap-4">
-          <span className={`block size-5 shrink-0 rounded-full transition-all duration-75 ${pulse ? "scale-150 bg-primary" : "bg-primary/40"}`} />
-          <span className="text-xl font-bold tracking-tight text-foreground md:text-2xl">{statusText}</span>
-        </div>
-      </div>
+      {/* 소개 탭 */}
+      {tab === "about" && <AboutPage />}
 
-      {/* 메인 콘텐츠 */}
-      <main className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
+      {/* 서비스 탭 */}
+      {tab === "service" && <>
+        {/* 공 위치 상태 배너 */}
+        <div className={`border-b border-border px-4 py-4 transition-colors md:px-8 ${pulse ? "bg-primary/10" : "bg-card"}`} aria-hidden="true">
+          <div className="mx-auto flex max-w-6xl items-center gap-4">
+            <span className={`block size-5 shrink-0 rounded-full transition-all duration-75 ${pulse ? "scale-150 bg-primary" : "bg-primary/40"}`} />
+            <span className="text-xl font-bold tracking-tight text-foreground md:text-2xl">{statusText}</span>
+          </div>
+        </div>
+
+        {/* 메인 콘텐츠 */}
+        <main className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-8">
         <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
 
           {/* 좌측: 영상 + 재생 컨트롤 + 레이더 */}
@@ -344,7 +370,8 @@ export function HaptiBallApp() {
             <EventLog events={events} currentTime={currentTime} onSeek={seek} />
           </div>
         </div>
-      </main>
+        </main>
+      </>}
     </div>
   )
 }
