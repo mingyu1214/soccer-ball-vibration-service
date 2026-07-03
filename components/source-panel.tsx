@@ -2,7 +2,7 @@
 
 import { useRef } from "react"
 import { Button } from "@/components/ui/button"
-import { Film, FileJson, Sparkles, Check } from "lucide-react"
+import { Film, FileJson, Check, Upload } from "lucide-react"
 
 interface SourcePanelProps {
   hasVideo: boolean
@@ -21,80 +21,93 @@ export function SourcePanel({
   error,
   onVideoFile,
   onDetectionFile,
-  onUseSample,
 }: SourcePanelProps) {
   const videoInput = useRef<HTMLInputElement>(null)
   const jsonInput = useRef<HTMLInputElement>(null)
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
-      <h3 className="mb-3 text-sm font-semibold">소스 불러오기</h3>
+    <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="source-heading">
+      <h2 id="source-heading" className="mb-4 text-base font-bold text-foreground">영상 불러오기</h2>
 
-      <div className="flex flex-col gap-2">
-        <input
-          ref={videoInput}
-          type="file"
-          accept="video/*"
-          className="hidden"
-          onChange={(e) => e.target.files?.[0] && onVideoFile(e.target.files[0])}
-        />
-        <input
-          ref={jsonInput}
-          type="file"
-          accept="application/json,.json"
-          className="hidden"
-          onChange={(e) => e.target.files?.[0] && onDetectionFile(e.target.files[0])}
-        />
+      <input
+        ref={videoInput}
+        type="file"
+        accept="video/*"
+        className="hidden"
+        aria-hidden="true"
+        onChange={(e) => e.target.files?.[0] && onVideoFile(e.target.files[0])}
+      />
+      <input
+        ref={jsonInput}
+        type="file"
+        accept="application/json,.json"
+        className="hidden"
+        aria-hidden="true"
+        onChange={(e) => e.target.files?.[0] && onDetectionFile(e.target.files[0])}
+      />
 
-        {/* 감지 데이터는 앱에 내장됨 — 사용자는 영상만 넣으면 됨 */}
-        <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
-          <Check className="size-4 shrink-0" />
-          <span className="text-pretty">감지 데이터가 앱에 내장되어 있습니다. 영상만 업로드하면 바로 재생됩니다.</span>
-        </div>
-
-        <Button className="h-12 justify-start text-base" onClick={() => videoInput.current?.click()}>
-          <Film className="size-5" />
-          <span className="flex-1 text-left">경기 영상 업로드</span>
-          {hasVideo && <Check className="size-5" />}
-        </Button>
+      {/* 내장 감지 데이터 안내 */}
+      <div className="mb-3 flex items-start gap-2 rounded-xl bg-primary/8 px-4 py-3">
+        <Check className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true" />
+        <p className="text-sm font-medium text-primary text-pretty">
+          감지 데이터 내장 완료. 영상만 업로드하면 진동이 시작됩니다.
+        </p>
       </div>
 
-      {detectionInfo && <p className="mt-3 text-xs text-muted-foreground text-pretty">{detectionInfo}</p>}
-      {error && <p className="mt-3 rounded-md bg-destructive/15 px-3 py-2 text-xs text-destructive text-pretty">{error}</p>}
+      {/* 영상 업로드 — 주 버튼 */}
+      {hasVideo ? (
+        <button
+          onClick={() => videoInput.current?.click()}
+          className="flex w-full items-center gap-3 rounded-xl border-2 border-primary bg-primary/8 px-4 py-4 text-left transition-colors hover:bg-primary/15 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label="다른 영상으로 교체"
+        >
+          <Film className="size-6 shrink-0 text-primary" aria-hidden="true" />
+          <div className="flex-1">
+            <p className="text-sm font-bold text-primary">영상 업로드 완료</p>
+            <p className="text-xs text-primary/70">탭하여 교체</p>
+          </div>
+          <Check className="size-5 text-primary" aria-hidden="true" />
+        </button>
+      ) : (
+        <button
+          onClick={() => videoInput.current?.click()}
+          className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 px-4 py-8 text-center transition-colors hover:border-primary hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+          aria-label="경기 영상 파일 선택"
+        >
+          <Upload className="size-8 text-primary/60" aria-hidden="true" />
+          <div>
+            <p className="text-base font-bold text-foreground">경기 영상 업로드</p>
+            <p className="mt-1 text-sm text-muted-foreground">MP4, MOV, AVI 등 동영상 파일</p>
+          </div>
+        </button>
+      )}
 
-      <details className="mt-4 text-xs text-muted-foreground">
-        <summary className="cursor-pointer font-medium text-foreground">다른 감지 JSON으로 교체 (선택)</summary>
-        <div className="mt-2 flex flex-col gap-2">
-          <Button variant="outline" className="justify-start" onClick={() => jsonInput.current?.click()}>
-            <FileJson className="size-4" />
+      {detectionInfo && (
+        <p className="mt-3 text-xs text-muted-foreground">{detectionInfo}</p>
+      )}
+      {error && (
+        <p className="mt-3 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive text-pretty" role="alert">
+          {error}
+        </p>
+      )}
+
+      {/* JSON 교체 (접힘) */}
+      <details className="mt-4">
+        <summary className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground">
+          다른 감지 JSON으로 교체 (선택사항)
+        </summary>
+        <div className="mt-2">
+          <Button
+            variant="outline"
+            className="w-full justify-start rounded-xl"
+            onClick={() => jsonInput.current?.click()}
+          >
+            <FileJson className="size-4" aria-hidden="true" />
             <span className="flex-1 text-left">감지 JSON 업로드</span>
-            {hasDetection && <Check className="size-4 text-primary" />}
-          </Button>
-          <Button variant="secondary" className="justify-start" onClick={onUseSample}>
-            <Sparkles className="size-4" />
-            <span className="flex-1 text-left">샘플 감지 데이터 생성</span>
+            {hasDetection && <Check className="size-4 text-primary" aria-hidden="true" />}
           </Button>
         </div>
       </details>
-
-      <details className="mt-4 text-xs text-muted-foreground">
-        <summary className="cursor-pointer font-medium text-foreground">감지 JSON 형식</summary>
-        <pre className="mt-2 overflow-x-auto rounded-md bg-secondary/50 p-3 leading-relaxed">
-{`{
-  "fps": 30,
-  "width": 1280,
-  "height": 720,
-  "frames": [
-    { "t": 0.00, "x": 640, "y": 360, "conf": 0.92 },
-    { "t": 0.03, "x": 655, "y": 358 },
-    { "t": 0.06, "x": null, "y": null }
-  ]
-}`}
-        </pre>
-        <p className="mt-2 text-pretty">
-          t=시간(초), x·y=공 중심 픽셀 좌표. 미검출 프레임은 x·y를 null 로 두세요.
-        </p>
-      </details>
-    </div>
+    </section>
   )
 }

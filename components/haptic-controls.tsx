@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button"
 import type { HapticSettings } from "@/lib/haptics"
 import { cn } from "@/lib/utils"
+import { Vibrate } from "lucide-react"
 
 interface HapticControlsProps {
   settings: HapticSettings
@@ -16,29 +17,35 @@ export function HapticControls({ settings, supported, native = false, onChange, 
   const set = (patch: Partial<HapticSettings>) => onChange({ ...settings, ...patch })
 
   return (
-    <section className="rounded-xl border border-border bg-card p-4" aria-labelledby="haptic-heading">
-      <div className="mb-4 flex items-center justify-between">
-        <h2 id="haptic-heading" className="text-base font-semibold">
-          진동 설정
-        </h2>
-        <Button size="sm" variant="secondary" onClick={onTest} className="h-10 px-4">
-          진동 테스트
+    <section className="rounded-2xl border border-border bg-card p-5" aria-labelledby="haptic-heading">
+      <div className="mb-5 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Vibrate className="size-5 text-primary" aria-hidden="true" />
+          <h2 id="haptic-heading" className="text-base font-bold text-foreground">진동 설정</h2>
+        </div>
+        <Button
+          size="sm"
+          variant="outline"
+          onClick={onTest}
+          className="h-10 rounded-xl border-primary/30 px-4 font-semibold text-primary hover:bg-primary/10"
+          aria-label="진동 테스트"
+        >
+          테스트
         </Button>
       </div>
 
       {native && (
-        <p className="mb-4 rounded-md bg-primary/15 px-3 py-2 text-sm text-primary text-pretty" role="status">
-          네이티브 앱 모드입니다. iPhone·안드로이드에서 강한 네이티브 진동이 동작합니다.
+        <p className="mb-4 rounded-xl bg-primary/10 px-4 py-3 text-sm font-medium text-primary" role="status">
+          네이티브 앱 모드 — iPhone·안드로이드에서 강한 햅틱이 동작합니다.
         </p>
       )}
-
       {!supported && !native && (
-        <p className="mb-4 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive text-pretty" role="alert">
-          이 브라우저는 진동을 지원하지 않습니다. 안드로이드 Chrome에서 열면 진동이 동작하고, iPhone은 웹 브라우저에서 진동이 막혀 있어 앱(HaptiBall) 설치 시 진동을 쓸 수 있습니다. 그동안은 소리·음성 안내를 이용하세요.
+        <p className="mb-4 rounded-xl bg-destructive/8 px-4 py-3 text-sm text-destructive text-pretty" role="alert">
+          이 브라우저는 진동을 지원하지 않습니다. 안드로이드 Chrome에서 열어주세요. iPhone은 앱 설치 시 진동이 동작합니다.
         </p>
       )}
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-5">
         <Toggle
           label="지속 진동"
           desc="공의 위치·속도에 따라 계속 진동"
@@ -51,6 +58,8 @@ export function HapticControls({ settings, supported, native = false, onChange, 
           checked={settings.events}
           onChange={(v) => set({ events: v })}
         />
+
+        <div className="h-px bg-border" aria-hidden="true" />
 
         <Range
           label="전체 세기"
@@ -98,7 +107,7 @@ function Toggle({
   return (
     <label className="flex cursor-pointer items-center justify-between gap-4">
       <span>
-        <span className="block text-sm font-medium">{label}</span>
+        <span className="block text-sm font-semibold text-foreground">{label}</span>
         <span className="block text-xs text-muted-foreground">{desc}</span>
       </span>
       <button
@@ -108,13 +117,13 @@ function Toggle({
         aria-label={label}
         onClick={() => onChange(!checked)}
         className={cn(
-          "relative h-6 w-11 shrink-0 rounded-full border border-border transition-colors",
-          checked ? "bg-primary" : "bg-secondary",
+          "relative h-7 w-12 shrink-0 rounded-full border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+          checked ? "border-primary bg-primary" : "border-border bg-secondary",
         )}
       >
         <span
           className={cn(
-            "absolute top-0.5 size-4 rounded-full bg-background transition-transform",
+            "absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform",
             checked ? "translate-x-5" : "translate-x-0.5",
           )}
         />
@@ -142,9 +151,9 @@ function Range({
 }) {
   return (
     <div>
-      <div className="mb-1 flex items-center justify-between text-xs">
-        <span className="font-medium">{label}</span>
-        <span className="text-muted-foreground">{format(value)}</span>
+      <div className="mb-2 flex items-center justify-between">
+        <span className="text-sm font-semibold text-foreground">{label}</span>
+        <span className="rounded-lg bg-secondary px-2 py-0.5 text-xs font-bold text-foreground">{format(value)}</span>
       </div>
       <input
         type="range"
@@ -154,7 +163,7 @@ function Range({
         value={value}
         aria-label={label}
         onChange={(e) => onChange(Number(e.target.value))}
-        className="h-1.5 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary"
+        className="h-2 w-full cursor-pointer appearance-none rounded-full bg-secondary accent-primary"
       />
     </div>
   )
