@@ -3,6 +3,7 @@
 // - 슛/방향전환 등 "이벤트 진동 패턴"
 
 import type { BallEventType, BallState } from "./detection"
+import { isVibrationAvailable, stopVibration, vibratePattern } from "./vibration-bridge"
 
 export interface HapticSettings {
   /** 지속 진동 사용 여부 */
@@ -25,9 +26,9 @@ export const DEFAULT_SETTINGS: HapticSettings = {
   fastInterval: 90,
 }
 
-/** 이 브라우저/기기가 Vibration API 를 지원하는지 */
+/** 이 기기가 진동을 지원하는지 (웹 Vibration API 또는 네이티브 앱 햅틱) */
 export function isVibrationSupported(): boolean {
-  return typeof navigator !== "undefined" && typeof navigator.vibrate === "function"
+  return isVibrationAvailable()
 }
 
 /** 이벤트별 진동 패턴 (ms 단위: 진동, 멈춤, 진동 ...) */
@@ -77,7 +78,7 @@ export class HapticEngine {
 
   /** 모든 진동 즉시 중단 */
   stop() {
-    if (this.supported) navigator.vibrate(0)
+    if (this.supported) stopVibration()
     this.lastPulseAt = 0
   }
 
@@ -101,7 +102,7 @@ export class HapticEngine {
     const proximity = ball.ny // 0(위) ~ 1(아래)
     const base = 18 + proximity * 40 + speedNorm * 45
     const dur = Math.max(10, Math.round(base * intensity))
-    navigator.vibrate(dur)
+    vibratePattern(dur)
     return true
   }
 
@@ -109,7 +110,7 @@ export class HapticEngine {
   fireEvent(type: BallEventType, eventIntensity: number): number[] | null {
     if (!this.supported || !this.settings.events) return null
     const pattern = eventPattern(type, eventIntensity, this.settings.intensity)
-    navigator.vibrate(pattern)
+    vibratePattern(pattern)
     // 이벤트 진동 직후 지속 진동이 곧바로 겹치지 않도록 살짝 지연
     this.lastPulseAt = performance.now() + pattern.reduce((a, b) => a + b, 0)
     return pattern
@@ -118,7 +119,7 @@ export class HapticEngine {
   /** 설정/지원 여부와 무관하게 단발 테스트 진동 */
   testPulse(): boolean {
     if (!this.supported) return false
-    navigator.vibrate([80, 60, 160])
+    vibratePattern([80, 60, 160])
     return true
   }
 }

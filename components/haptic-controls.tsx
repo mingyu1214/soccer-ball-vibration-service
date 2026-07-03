@@ -7,11 +7,12 @@ import { cn } from "@/lib/utils"
 interface HapticControlsProps {
   settings: HapticSettings
   supported: boolean
+  native?: boolean
   onChange: (next: HapticSettings) => void
   onTest: () => void
 }
 
-export function HapticControls({ settings, supported, onChange, onTest }: HapticControlsProps) {
+export function HapticControls({ settings, supported, native = false, onChange, onTest }: HapticControlsProps) {
   const set = (patch: Partial<HapticSettings>) => onChange({ ...settings, ...patch })
 
   return (
@@ -25,9 +26,15 @@ export function HapticControls({ settings, supported, onChange, onTest }: Haptic
         </Button>
       </div>
 
-      {!supported && (
+      {native && (
+        <p className="mb-4 rounded-md bg-primary/15 px-3 py-2 text-sm text-primary text-pretty" role="status">
+          네이티브 앱 모드입니다. iPhone·안드로이드에서 강한 네이티브 진동이 동작합니다.
+        </p>
+      )}
+
+      {!supported && !native && (
         <p className="mb-4 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive text-pretty" role="alert">
-          이 기기/브라우저는 진동(Vibration API)을 지원하지 않습니다. 안드로이드 Chrome 등 모바일에서 열거나, 앱(Capacitor) 빌드에서는 iOS에서도 진동이 동작합니다.
+          이 브라우저는 진동을 지원하지 않습니다. 안드로이드 Chrome에서 열면 진동이 동작하고, iPhone은 웹 브라우저에서 진동이 막혀 있어 앱(HaptiBall) 설치 시 진동을 쓸 수 있습니다. 그동안은 소리·음성 안내를 이용하세요.
         </p>
       )}
 
@@ -73,7 +80,7 @@ export function HapticControls({ settings, supported, onChange, onTest }: Haptic
           onChange={(v) => set({ fastInterval: v })}
         />
       </div>
-    </div>
+    </section>
   )
 }
 

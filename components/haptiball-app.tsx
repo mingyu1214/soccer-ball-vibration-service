@@ -13,6 +13,7 @@ import {
   type DetectionData,
 } from "@/lib/detection"
 import { DEFAULT_SETTINGS, HapticEngine, type HapticSettings } from "@/lib/haptics"
+import { initVibrationBridge, isNativeApp, isVibrationAvailable } from "@/lib/vibration-bridge"
 import { AudioCueEngine, DEFAULT_AUDIO_SETTINGS, horizontalWord, type AudioSettings } from "@/lib/audio-cue"
 import { generateSampleDetection } from "@/lib/sample-data"
 import { SourcePanel } from "@/components/source-panel"
@@ -46,6 +47,7 @@ export function HaptiBallApp() {
   const [pulse, setPulse] = useState(false)
   const [activeEventLabel, setActiveEventLabel] = useState<string | null>(null)
   const [supported, setSupported] = useState(false)
+  const [native, setNative] = useState(false)
   const [audioOk, setAudioOk] = useState(false)
   const [speechOk, setSpeechOk] = useState(false)
   // 스크린리더용 실시간 안내 문구
@@ -54,11 +56,23 @@ export function HaptiBallApp() {
 
   // 엔진 초기화 (클라이언트 마운트 후에만 — SSR 하이드레이션 불일치 방지)
   useEffect(() => {
+    let cancelled = false
+    // Capacitor 네이티브 햅틱 브릿지 초기화 (iOS 진동 지원). 웹에서는 no-op.
+    initVibrationBridge().then(() => {
+      if (cancelled) return
+      setNative(isNativeApp())
+      // 네이티브 플러그인 로드가 끝난 뒤 지원 여부 재확인
+      setSupported(isVibrationAvailable())
+    })
+
     if (engineRef.current === null) engineRef.current = new HapticEngine(settings)
     if (audioRef.current === null) audioRef.current = new AudioCueEngine(audioSettings)
     setSupported(engineRef.current.isSupported)
     setAudioOk(audioRef.current.audioOk)
     setSpeechOk(audioRef.current.speechOk)
+    return () => {
+      cancelled = true
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
@@ -365,7 +379,7 @@ export function HaptiBallApp() {
             onChange={setAudioSettings}
             onTest={testAudio}
           />
-          <HapticControls settings={settings} supported={supported} onChange={setSettings} onTest={testVibration} />
+          <HapticControls settings={settings} supported={supported} native={native} onChange={setSettings} onTest={testVibration} />
           <EventLog events={events} currentTime={currentTime} onSeek={seek} />
         </div>
       </div>
