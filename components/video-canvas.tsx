@@ -24,17 +24,23 @@ export const VideoCanvas = forwardRef<HTMLVideoElement, VideoCanvasProps>(functi
   return (
     <div className="relative aspect-video w-full overflow-hidden rounded-none border-0 bg-black md:rounded-xl md:border md:border-border">
       {src ? (
-        <video
-          ref={ref}
-          src={src}
-          playsInline
-          className="h-full w-full object-contain"
-          onLoadedMetadata={onLoadedMetadata}
-          onTimeUpdate={onTimeUpdate}
-          onPlay={onPlay}
-          onPause={onPause}
-          onEnded={onEnded}
-        />
+        <>
+          <video
+            ref={ref}
+            src={src}
+            playsInline
+            disablePictureInPicture
+            controlsList="nodownload nofullscreen noremoteplayback"
+            className="h-full w-full object-contain"
+            onLoadedMetadata={onLoadedMetadata}
+            onTimeUpdate={onTimeUpdate}
+            onPlay={onPlay}
+            onPause={onPause}
+            onEnded={onEnded}
+          />
+          {/* 네이티브 컨트롤 오버레이 차단 — 모바일에서 탭해도 브라우저 UI 안 뜨게 */}
+          <div className="absolute inset-0" aria-hidden="true" />
+        </>
       ) : (
         <div className="flex h-full w-full items-center justify-center px-6 text-center">
           <p className="text-sm text-muted-foreground text-balance">
