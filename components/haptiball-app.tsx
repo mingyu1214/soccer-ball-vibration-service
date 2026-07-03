@@ -6,7 +6,6 @@ import { Play, Pause, RotateCcw, Vibrate } from "lucide-react"
 import {
   buildEventTimeline,
   computeBallState,
-  parseDetectionData,
   EVENT_LABELS,
   type BallEvent,
   type BallState,
@@ -15,8 +14,8 @@ import {
 import { DEFAULT_SETTINGS, HapticEngine, type HapticSettings } from "@/lib/haptics"
 import { initVibrationBridge, isNativeApp, isVibrationAvailable } from "@/lib/vibration-bridge"
 import { AudioCueEngine, DEFAULT_AUDIO_SETTINGS, horizontalWord, type AudioSettings } from "@/lib/audio-cue"
-import { generateSampleDetection } from "@/lib/sample-data"
-import { SourcePanel } from "@/components/source-panel"
+import { getMatchById } from "@/lib/matches"
+import { MatchLibrary } from "@/components/match-library"
 import { VideoCanvas } from "@/components/video-canvas"
 import { PitchRadar } from "@/components/pitch-radar"
 import { HapticControls } from "@/components/haptic-controls"
@@ -32,11 +31,15 @@ export function HaptiBallApp() {
   const rafRef = useRef<number | null>(null)
   const lastProcessedT = useRef(0)
 
+  // 가상 재생 클럭 (영상이 없는 경기용 — 시각장애인은 영상 없이 재생)
+  const virtualTimeRef = useRef(0)
+  const playingRef = useRef(false)
+  const lastNowRef = useRef(0)
+
+  const [selectedMatchId, setSelectedMatchId] = useState<string | null>(null)
   const [videoSrc, setVideoSrc] = useState<string | null>(null)
   const [detection, setDetection] = useState<DetectionData | null>(null)
   const [events, setEvents] = useState<BallEvent[]>([])
-  const [error, setError] = useState<string | null>(null)
-  const [detectionInfo, setDetectionInfo] = useState<string | null>(null)
 
   const [settings, setSettings] = useState<HapticSettings>(DEFAULT_SETTINGS)
   const [audioSettings, setAudioSettings] = useState<AudioSettings>(DEFAULT_AUDIO_SETTINGS)
@@ -61,7 +64,6 @@ export function HaptiBallApp() {
     initVibrationBridge().then(() => {
       if (cancelled) return
       setNative(isNativeApp())
-      // 네이티브 플러그인 로드가 끝난 뒤 지원 여부 재확인
       setSupported(isVibrationAvailable())
     })
 
@@ -93,42 +95,38 @@ export function HaptiBallApp() {
     setEvents(buildEventTimeline(detection))
   }, [detection])
 
-  const applyDetection = useCallback((data: DetectionData, label: string) => {
-    setDetection(data)
-    lastProcessedT.current = 0
-    const detected = data.frames.filter((f) => f.x !== null).length
-    setDetectionInfo(
-      `${label} · ${data.frames.length}프레임 · 공 검출 ${detected}프레임 · ${data.width}×${data.height}`,
-    )
-    setError(null)
+  const stopEngines = useCallback(() => {
+    engineRef.current?.stop()
+    audioRef.current?.stop()
   }, [])
 
-  // 파일 핸들러
-  const handleVideoFile = useCallback((file: File) => {
-    const url = URL.createObjectURL(file)
-    setVideoSrc((prev) => {
-      if (prev) URL.revokeObjectURL(prev)
-      return url
-    })
-    setError(null)
-  }, [])
+  // 경기 선택 — 파일 업로드 대신 내장 경기를 로드
+  const selectMatch = useCallback(
+    (id: string) => {
+      const match = getMatchById(id)
+      if (!match) return
+      const data = match.build()
 
-  const handleDetectionFile = useCallback(
-    async (file: File) => {
-      try {
-        const text = await file.text()
-        const parsed = parseDetectionData(JSON.parse(text))
-        applyDetection(parsed, file.name)
-      } catch (e) {
-        setError(`감지 JSON 오류: ${e instanceof Error ? e.message : String(e)}`)
-      }
+      playingRef.current = false
+      setIsPlaying(false)
+      stopEngines()
+
+      setSelectedMatchId(id)
+      setDetection(data)
+      setVideoSrc(match.videoSrc ?? null)
+
+      virtualTimeRef.current = 0
+      lastProcessedT.current = 0
+      lastLiveSide.current = null
+      setCurrentTime(0)
+      setBall(EMPTY_BALL)
+
+      const dur = data.frames.length ? data.frames[data.frames.length - 1].t : 0
+      setDuration(dur)
+      setLiveStatus(`${match.title} 선택됨. 재생 버튼을 누르면 진동과 소리가 시작됩니다.`)
     },
-    [applyDetection],
+    [stopEngines],
   )
-
-  const handleUseSample = useCallback(() => {
-    applyDetection(generateSampleDetection(), "샘플 데이터")
-  }, [applyDetection])
 
   // 이벤트 발화 (재생 시점 진행분): 진동 + 음성
   const fireEventsBetween = useCallback((from: number, to: number, list: BallEvent[]) => {
@@ -150,19 +148,39 @@ export function HaptiBallApp() {
     const video = videoRef.current
     const engine = engineRef.current
     const audio = audioRef.current
-    if (!video || !detection) {
+    if (!detection) {
       rafRef.current = requestAnimationFrame(loop)
       return
     }
 
-    const t = video.currentTime
+    // 현재 재생 시간 결정: 영상이 있으면 영상 기준, 없으면 가상 클럭
+    let t: number
+    const now = performance.now()
+    if (videoSrc && video) {
+      t = video.currentTime
+    } else {
+      if (playingRef.current) {
+        const dt = (now - lastNowRef.current) / 1000
+        let nt = virtualTimeRef.current + dt
+        if (duration > 0 && nt >= duration) {
+          nt = duration
+          playingRef.current = false
+          setIsPlaying(false)
+          stopEngines()
+          setLiveStatus("경기 재생이 끝났습니다")
+        }
+        virtualTimeRef.current = nt
+      }
+      t = virtualTimeRef.current
+    }
+    lastNowRef.current = now
     setCurrentTime(t)
 
     const state = computeBallState(detection, t)
     setBall(state)
 
     // 지속 진동
-    if (engine?.tickContinuous(performance.now(), state)) {
+    if (engine?.tickContinuous(now, state)) {
       setPulse(true)
       window.setTimeout(() => setPulse(false), 90)
     }
@@ -170,7 +188,7 @@ export function HaptiBallApp() {
     // 연속 오디오 톤(스테레오 위치 + 피치)
     audio?.tickTone(state)
 
-    // 스크린리더용 위치 안내 (좌우 구간이 바뀔 때만 업데이트하여 과도한 낭독 방지)
+    // 스크린리더용 위치 안내 (좌우 구간이 바뀔 때만 업데이트)
     if (state.detected) {
       const word = horizontalWord(state.nx)
       if (word !== lastLiveSide.current) {
@@ -183,7 +201,7 @@ export function HaptiBallApp() {
       setLiveStatus("공을 추적하지 못하고 있습니다")
     }
 
-    // 이벤트 진동 (seek 대비: 뒤로 이동하면 리셋)
+    // 이벤트 발화 (seek 대비: 뒤로 이동하면 리셋)
     if (t < lastProcessedT.current - 0.05) {
       lastProcessedT.current = t
     } else if (t > lastProcessedT.current) {
@@ -192,7 +210,7 @@ export function HaptiBallApp() {
     }
 
     rafRef.current = requestAnimationFrame(loop)
-  }, [detection, events, fireEventsBetween])
+  }, [detection, videoSrc, duration, events, fireEventsBetween, stopEngines])
 
   useEffect(() => {
     rafRef.current = requestAnimationFrame(loop)
@@ -201,41 +219,60 @@ export function HaptiBallApp() {
     }
   }, [loop])
 
-  // 재생/일시정지 시 엔진 정지
+  // 영상 재생/일시정지 콜백 (영상이 있는 경기용)
   const handlePlay = () => setIsPlaying(true)
   const handlePause = () => {
     setIsPlaying(false)
-    engineRef.current?.stop()
-    audioRef.current?.stop()
+    stopEngines()
   }
   const handleEnded = () => {
     setIsPlaying(false)
-    engineRef.current?.stop()
-    audioRef.current?.stop()
-    setLiveStatus("영상이 끝났습니다")
+    stopEngines()
+    setLiveStatus("경기 재생이 끝났습니다")
   }
 
   const togglePlay = () => {
-    const video = videoRef.current
-    if (!video || !videoSrc) return
+    if (!detection) return
     // 사용자 제스처 안에서 오디오 컨텍스트 활성화 (모바일 정책)
     audioRef.current?.resume()
-    if (video.paused) video.play()
-    else video.pause()
+
+    const video = videoRef.current
+    if (videoSrc && video) {
+      if (video.paused) video.play()
+      else video.pause()
+      return
+    }
+
+    // 가상 클럭 재생/정지
+    if (playingRef.current) {
+      playingRef.current = false
+      setIsPlaying(false)
+      stopEngines()
+    } else {
+      if (duration > 0 && virtualTimeRef.current >= duration) {
+        virtualTimeRef.current = 0
+        lastProcessedT.current = 0
+      }
+      lastNowRef.current = performance.now()
+      playingRef.current = true
+      setIsPlaying(true)
+      setLiveStatus("재생을 시작합니다")
+    }
   }
 
   const restart = () => {
     const video = videoRef.current
-    if (!video) return
-    video.currentTime = 0
+    if (videoSrc && video) video.currentTime = 0
+    virtualTimeRef.current = 0
     lastProcessedT.current = 0
+    setCurrentTime(0)
     setLiveStatus("처음으로 이동했습니다")
   }
 
   const seek = (t: number) => {
     const video = videoRef.current
-    if (!video) return
-    video.currentTime = t
+    if (videoSrc && video) video.currentTime = t
+    virtualTimeRef.current = t
     lastProcessedT.current = t
     setCurrentTime(t)
   }
@@ -247,7 +284,7 @@ export function HaptiBallApp() {
   const testVibration = () => engineRef.current?.testPulse()
   const testAudio = () => audioRef.current?.test()
 
-  const ready = Boolean(videoSrc && detection)
+  const ready = Boolean(detection)
   const progressLabel = useMemo(() => `${formatTime(currentTime)} / ${formatTime(duration)}`, [currentTime, duration])
 
   return (
@@ -266,7 +303,7 @@ export function HaptiBallApp() {
         <div>
           <h1 className="text-lg font-bold leading-tight md:text-xl">HaptiBall</h1>
           <p className="text-xs text-muted-foreground md:text-sm text-pretty">
-            축구 영상의 공 위치를 진동과 소리로 — 시각장애인 접근성 서비스
+            축구 경기의 공 위치를 진동과 소리로 — 시각장애인 접근성 서비스
           </p>
         </div>
       </header>
@@ -281,9 +318,7 @@ export function HaptiBallApp() {
         className="mb-4 flex min-h-14 items-center gap-3 rounded-xl border border-border bg-card px-4 py-3"
         aria-hidden="true"
       >
-        <span
-          className={cnPulse(pulse)}
-        />
+        <span className={cnPulse(pulse)} />
         <span className="text-base font-semibold md:text-lg text-pretty">
           {activeEventLabel
             ? activeEventLabel
@@ -291,20 +326,21 @@ export function HaptiBallApp() {
               ? `공: ${horizontalWord(ball.nx)}`
               : ready
                 ? "공 추적 대기 중"
-                : "영상과 감지 데이터를 불러오세요"}
+                : "경기를 선택하세요"}
         </span>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1fr_22rem]">
-        {/* 좌측: 영상 + 재생 컨트롤 */}
+        {/* 좌측: 영상/레이더 + 재생 컨트롤 */}
         <div className="flex flex-col gap-4">
           <VideoCanvas
             ref={videoRef}
             src={videoSrc}
             ball={ball}
             showOverlay={Boolean(detection)}
+            hasMatch={ready}
             lastPulse={pulse}
-            onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
+            onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? duration)}
             onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
             onPlay={handlePlay}
             onPause={handlePause}
@@ -316,7 +352,7 @@ export function HaptiBallApp() {
             <div className="flex items-center gap-3">
               <Button
                 onClick={togglePlay}
-                disabled={!videoSrc}
+                disabled={!ready}
                 className="h-14 flex-1 text-base font-semibold"
                 aria-label={isPlaying ? "일시정지" : "재생 및 진동·소리 시작"}
               >
@@ -327,7 +363,7 @@ export function HaptiBallApp() {
                 size="icon"
                 variant="secondary"
                 onClick={restart}
-                disabled={!videoSrc}
+                disabled={!ready}
                 aria-label="처음으로 되감기"
                 className="size-14"
               >
@@ -342,7 +378,7 @@ export function HaptiBallApp() {
                 step={0.05}
                 value={currentTime}
                 onChange={handleSeekBar}
-                disabled={!videoSrc}
+                disabled={!ready}
                 aria-label="재생 위치"
                 aria-valuetext={progressLabel}
                 className="h-2 flex-1 cursor-pointer appearance-none rounded-full bg-secondary accent-primary disabled:opacity-50"
@@ -353,7 +389,7 @@ export function HaptiBallApp() {
             </div>
             {!ready && (
               <p className="mt-3 text-sm text-muted-foreground text-pretty">
-                영상과 감지 데이터를 모두 불러오면 재생 중 진동과 소리가 발생합니다. 진동은 스마트폰에서, 소리는 이어폰 착용 시 방향이 가장 잘 느껴집니다.
+                오른쪽 목록에서 경기를 선택한 뒤 재생하세요. 진동은 스마트폰에서, 소리는 이어폰 착용 시 방향이 가장 잘 느껴집니다.
               </p>
             )}
           </section>
@@ -361,17 +397,9 @@ export function HaptiBallApp() {
           <PitchRadar ball={ball} />
         </div>
 
-        {/* 우측: 소스 / 소리 / 진동 / 이벤트 */}
+        {/* 우측: 경기 목록 / 소리 / 진동 / 이벤트 */}
         <div className="flex flex-col gap-4">
-          <SourcePanel
-            hasVideo={Boolean(videoSrc)}
-            hasDetection={Boolean(detection)}
-            detectionInfo={detectionInfo}
-            error={error}
-            onVideoFile={handleVideoFile}
-            onDetectionFile={handleDetectionFile}
-            onUseSample={handleUseSample}
-          />
+          <MatchLibrary selectedId={selectedMatchId} onSelect={selectMatch} />
           <AudioControls
             settings={audioSettings}
             audioOk={audioOk}
@@ -379,7 +407,13 @@ export function HaptiBallApp() {
             onChange={setAudioSettings}
             onTest={testAudio}
           />
-          <HapticControls settings={settings} supported={supported} native={native} onChange={setSettings} onTest={testVibration} />
+          <HapticControls
+            settings={settings}
+            supported={supported}
+            native={native}
+            onChange={setSettings}
+            onTest={testVibration}
+          />
           <EventLog events={events} currentTime={currentTime} onSeek={seek} />
         </div>
       </div>
