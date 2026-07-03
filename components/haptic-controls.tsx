@@ -15,17 +15,19 @@ export function HapticControls({ settings, supported, onChange, onTest }: Haptic
   const set = (patch: Partial<HapticSettings>) => onChange({ ...settings, ...patch })
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <section className="rounded-xl border border-border bg-card p-4" aria-labelledby="haptic-heading">
       <div className="mb-4 flex items-center justify-between">
-        <h3 className="text-sm font-semibold">진동 설정</h3>
-        <Button size="sm" variant="secondary" onClick={onTest}>
+        <h2 id="haptic-heading" className="text-base font-semibold">
+          진동 설정
+        </h2>
+        <Button size="sm" variant="secondary" onClick={onTest} className="h-10 px-4">
           진동 테스트
         </Button>
       </div>
 
       {!supported && (
-        <p className="mb-4 rounded-md bg-destructive/15 px-3 py-2 text-xs text-destructive text-pretty">
-          이 기기/브라우저는 진동(Vibration API)을 지원하지 않습니다. 안드로이드 Chrome 등 모바일에서 열어주세요.
+        <p className="mb-4 rounded-md bg-destructive/15 px-3 py-2 text-sm text-destructive text-pretty" role="alert">
+          이 기기/브라우저는 진동(Vibration API)을 지원하지 않습니다. 안드로이드 Chrome 등 모바일에서 열거나, 앱(Capacitor) 빌드에서는 iOS에서도 진동이 동작합니다.
         </p>
       )}
 
