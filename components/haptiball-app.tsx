@@ -103,6 +103,24 @@ export function HaptiBallApp() {
     setError(null)
   }, [])
 
+  // 앱에 내장된 감지 데이터(public/detection.json) 자동 로드 — 사용자는 영상만 넣으면 됨
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch("/detection.json")
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const parsed = parseDetectionData(await res.json())
+        if (!cancelled) applyDetection(parsed, "내장 감지 데이터")
+      } catch (e) {
+        if (!cancelled) setError(`내장 감지 데이터 로드 실패: ${e instanceof Error ? e.message : String(e)}`)
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [applyDetection])
+
   // 파일 핸들러
   const handleVideoFile = useCallback((file: File) => {
     const url = URL.createObjectURL(file)
@@ -291,7 +309,7 @@ export function HaptiBallApp() {
               ? `공: ${horizontalWord(ball.nx)}`
               : ready
                 ? "공 추적 대기 중"
-                : "영상과 감지 데이터를 불러오세요"}
+                : "경기 영상을 업로드하세요"}
         </span>
       </div>
 
@@ -353,7 +371,7 @@ export function HaptiBallApp() {
             </div>
             {!ready && (
               <p className="mt-3 text-sm text-muted-foreground text-pretty">
-                영상과 감지 데이터를 모두 불러오면 재생 중 진동과 소리가 발생합니다. 진동은 스마트폰에서, 소리는 이어폰 착용 시 방향이 가장 잘 느껴집니다.
+                감지 데이터는 이미 내장되어 있습니다. 경기 영상만 업로드하면 재생 중 진동과 소리가 발생합니다. 진동은 스마트폰에서, 소리는 이어폰 착용 시 방향이 가장 잘 느껴집니다.
               </p>
             )}
           </section>
