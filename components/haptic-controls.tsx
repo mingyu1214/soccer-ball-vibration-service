@@ -2,7 +2,6 @@
 
 import { Button } from "@/components/ui/button"
 import type { HapticSettings } from "@/lib/haptics"
-import { cn } from "@/lib/utils"
 import { Vibrate } from "lucide-react"
 
 interface HapticControlsProps {
@@ -45,92 +44,19 @@ export function HapticControls({ settings, supported, native = false, onChange, 
         </p>
       )}
 
-      <div className="flex flex-col gap-5">
-        <Toggle
-          label="지속 진동"
-          desc="공의 위치·속도에 따라 계속 진동"
-          checked={settings.continuous}
-          onChange={(v) => set({ continuous: v })}
-        />
-        <Toggle
-          label="이벤트 진동"
-          desc="슛·방향 전환·진영 이동 시 강조 진동"
-          checked={settings.events}
-          onChange={(v) => set({ events: v })}
-        />
-
-        <div className="h-px bg-border" aria-hidden="true" />
-
-        <Range
-          label="전체 세기"
-          value={settings.intensity}
-          min={0.2}
-          max={1}
-          step={0.05}
-          format={(v) => `${Math.round(v * 100)}%`}
-          onChange={(v) => set({ intensity: v })}
-        />
-        <Range
-          label="느린 공 간격"
-          value={settings.slowInterval}
-          min={200}
-          max={800}
-          step={20}
-          format={(v) => `${v}ms`}
-          onChange={(v) => set({ slowInterval: v })}
-        />
-        <Range
-          label="빠른 공 간격"
-          value={settings.fastInterval}
-          min={40}
-          max={200}
-          step={10}
-          format={(v) => `${v}ms`}
-          onChange={(v) => set({ fastInterval: v })}
-        />
-      </div>
+      <Range
+        label="진동 세기"
+        value={settings.intensity}
+        min={0.2}
+        max={1}
+        step={0.05}
+        format={(v) => `${Math.round(v * 100)}%`}
+        onChange={(v) => set({ intensity: v })}
+      />
     </section>
   )
 }
 
-function Toggle({
-  label,
-  desc,
-  checked,
-  onChange,
-}: {
-  label: string
-  desc: string
-  checked: boolean
-  onChange: (v: boolean) => void
-}) {
-  return (
-    <label className="flex cursor-pointer items-center justify-between gap-4">
-      <span>
-        <span className="block text-sm font-semibold text-foreground">{label}</span>
-        <span className="block text-xs text-muted-foreground">{desc}</span>
-      </span>
-      <button
-        type="button"
-        role="switch"
-        aria-checked={checked}
-        aria-label={label}
-        onClick={() => onChange(!checked)}
-        className={cn(
-          "relative h-7 w-12 shrink-0 rounded-full border-2 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary",
-          checked ? "border-primary bg-primary" : "border-border bg-secondary",
-        )}
-      >
-        <span
-          className={cn(
-            "absolute top-0.5 size-5 rounded-full bg-white shadow-sm transition-transform",
-            checked ? "translate-x-5" : "translate-x-0.5",
-          )}
-        />
-      </button>
-    </label>
-  )
-}
 
 function Range({
   label,
