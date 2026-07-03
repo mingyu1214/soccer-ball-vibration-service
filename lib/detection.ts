@@ -101,7 +101,84 @@ export function parseDetectionData(raw: unknown): DetectionData {
     }
   })
   frames.sort((a, b) => a.t - b.t)
-  return { fps: obj.fps ? Number(obj.fps) : undefined, width, height, frames }
+  const cleaned = cleanFrames(frames)
+  return { fps: obj.fps ? Number(obj.fps) : undefined, width, height, frames: cleaned }
+}
+
+/**
+ * YOLO 출력 특유의 노이즈를 정리하는 전처리 필터.
+ * 1) 낮은 신뢰도(conf < 0.3) 프레임을 null 처리 (공 튐 방지)
+ * 2) 연속으로 완전히 동일한 좌표가 반복되는 구간 → null 처리 (YOLO freeze 제거)
+ * 3) 공이 한 프레임 만에 지나치게 많이 이동하는 경우 null 처리 (오검출 제거)
+ */
+function cleanFrames(frames: DetectionFrame[]): DetectionFrame[] {
+  const MIN_CONF = 0.3
+  const MAX_JUMP_PX = 250  // 한 프레임(~0.033초) 에 250픽셀 이상 이동하면 오검출
+  const MAX_FREEZE = 10    // 같은 좌표가 10프레임 이상 연속이면 freeze
+
+  const result: DetectionFrame[] = frames.map(f => ({ ...f }))
+
+  // 1) 낮은 신뢰도 제거
+  for (const f of result) {
+    if (f.conf !== undefined && f.conf < MIN_CONF) {
+      f.x = null
+      f.y = null
+    }
+  }
+
+  // 2) freeze 구간 제거 (같은 좌표가 MAX_FREEZE프레임 이상 연속)
+  let freezeStart = 0
+  let freezeCount = 1
+  for (let i = 1; i < result.length; i++) {
+    const prev = result[i - 1]
+    const cur = result[i]
+    if (
+      cur.x !== null && prev.x !== null &&
+      cur.x === prev.x && cur.y === prev.y
+    ) {
+      freezeCount++
+    } else {
+      if (freezeCount >= MAX_FREEZE) {
+        for (let j = freezeStart; j < freezeStart + freezeCount; j++) {
+          result[j].x = null
+          result[j].y = null
+        }
+      }
+      freezeStart = i
+      freezeCount = 1
+    }
+  }
+  // 마지막 구간
+  if (freezeCount >= MAX_FREEZE) {
+    for (let j = freezeStart; j < freezeStart + freezeCount; j++) {
+      result[j].x = null
+      result[j].y = null
+    }
+  }
+
+  // 3) 급격한 위치 점프 제거
+  let lastValid: DetectionFrame | null = null
+  for (const f of result) {
+    if (f.x === null || f.y === null) {
+      lastValid = null
+      continue
+    }
+    if (lastValid !== null) {
+      const dx = f.x - (lastValid.x ?? 0)
+      const dy = f.y - (lastValid.y ?? 0)
+      const dist = Math.hypot(dx, dy)
+      const dt = Math.max(0.001, f.t - lastValid.t)
+      // 짧은 시간에 너무 먼 거리 이동 → 오검출
+      if (dist / dt > MAX_JUMP_PX / 0.033) {
+        f.x = null
+        f.y = null
+        continue
+      }
+    }
+    lastValid = f
+  }
+
+  return result
 }
 
 /** 이진 탐색: t 이하인 마지막 프레임 인덱스 반환 (없으면 -1) */
@@ -179,9 +256,10 @@ export function computeBallState(data: DetectionData, t: number): BallState {
   }
 }
 
-/** 이벤트 감지 임계값 (필요시 조정) */
-const SHOT_SPEED = 0.9 // 정규화 속도(초당 화면폭 배수) 이상이면 슛
-const DIR_CHANGE = Math.PI / 2 // 방향 변화 90도 이상이면 전환
+/** 이벤트 감지 임계값 */
+// 필터 후 실제 속도 p75 ~ p90 범위를 "빠른 움직임"으로 정의
+const SHOT_SPEED = 3.0   // 정규화 속도(초당 화면폭 배수) 이상이면 슛/강한 킥
+const DIR_CHANGE = Math.PI / 2.5 // 방향 변화 72도 이상이면 전환 (좀 더 예민하게)
 const SIDE_LEFT = 0.33
 const SIDE_RIGHT = 0.67
 
