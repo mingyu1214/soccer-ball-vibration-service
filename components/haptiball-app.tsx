@@ -15,7 +15,6 @@ import {
 import { DEFAULT_SETTINGS, HapticEngine, type HapticSettings } from "@/lib/haptics"
 import { initVibrationBridge, isNativeApp, isVibrationAvailable } from "@/lib/vibration-bridge"
 import { VideoCanvas } from "@/components/video-canvas"
-import { PitchRadar } from "@/components/pitch-radar"
 import { HapticControls } from "@/components/haptic-controls"
 import { EventLog } from "@/components/event-log"
 import { AboutPage } from "@/components/about-page"
@@ -196,7 +195,7 @@ export function HaptiBallApp() {
     <div className="min-h-screen bg-background">
       <p aria-live="assertive" className="sr-only">{liveStatus}</p>
       <a href="#play-btn" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground">
-        재생 버튼으로 건너뛰기
+        재생 버튼으로 건��뛰기
       </a>
 
       {/* 헤더 */}
@@ -330,48 +329,23 @@ export function HaptiBallApp() {
               </div>
             </section>
 
-            {/* 2-1. 영상 (업로드 시 노출) */}
-            {videoSrc && (
-              <div className="border-b border-border">
-                <VideoCanvas
-                  ref={videoRef}
-                  src={videoSrc}
-                  ball={ball}
-                  showOverlay={Boolean(detection)}
-                  lastPulse={pulse}
-                  onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
-                  onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
-                  onPlay={handlePlay}
-                  onPause={handlePause}
-                  onEnded={handleEnded}
-                />
-              </div>
-            )}
-
-            {/* 영상 없을 때만 숨겨진 video 엘리먼트로 동기화 유지 */}
-            {!videoSrc && (
-              <div className="hidden">
-                <VideoCanvas
-                  ref={videoRef}
-                  src={null}
-                  ball={ball}
-                  showOverlay={false}
-                  lastPulse={false}
-                  onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
-                  onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
-                  onPlay={handlePlay}
-                  onPause={handlePause}
-                  onEnded={handleEnded}
-                />
-              </div>
-            )}
-
-            {/* 3. 피치 레이더 — 공 위치 시각화 */}
-            <div className="px-4 py-4 border-b border-border">
-              <PitchRadar ball={ball} />
+            {/* 2-1. 영상 — 항상 DOM에 존재해야 ref가 동작함. videoSrc 없으면 숨김 */}
+            <div className={videoSrc ? "border-b border-border" : "hidden"}>
+              <VideoCanvas
+                ref={videoRef}
+                src={videoSrc}
+                ball={ball}
+                showOverlay={Boolean(detection)}
+                lastPulse={pulse}
+                onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
+                onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
+                onPlay={handlePlay}
+                onPause={handlePause}
+                onEnded={handleEnded}
+              />
             </div>
 
-            {/* 4. 진동 세기 + 이벤트 — 하단 */}
+            {/* 3. 진동 세기 + 이벤트 — 하단 */}
             <div className="px-4 py-4 flex flex-col gap-4">
               <HapticControls
                 settings={settings}
@@ -431,7 +405,6 @@ export function HaptiBallApp() {
                     </p>
                   )}
                 </section>
-                <PitchRadar ball={ball} />
               </div>
               <div className="flex flex-col gap-5">
                 {/* 데스크톱 업로드 패널 인라인 */}
