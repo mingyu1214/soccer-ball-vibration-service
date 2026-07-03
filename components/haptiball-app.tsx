@@ -330,21 +330,41 @@ export function HaptiBallApp() {
               </div>
             </section>
 
-            {/* 숨겨진 비디오 엘리먼트 (재생 동기화용) */}
-            <div className="hidden">
-              <VideoCanvas
-                ref={videoRef}
-                src={videoSrc}
-                ball={ball}
-                showOverlay={false}
-                lastPulse={false}
-                onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
-                onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
-                onPlay={handlePlay}
-                onPause={handlePause}
-                onEnded={handleEnded}
-              />
-            </div>
+            {/* 2-1. 영상 (업로드 시 노출) */}
+            {videoSrc && (
+              <div className="border-b border-border">
+                <VideoCanvas
+                  ref={videoRef}
+                  src={videoSrc}
+                  ball={ball}
+                  showOverlay={Boolean(detection)}
+                  lastPulse={pulse}
+                  onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
+                  onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
+                  onPlay={handlePlay}
+                  onPause={handlePause}
+                  onEnded={handleEnded}
+                />
+              </div>
+            )}
+
+            {/* 영상 없을 때만 숨겨진 video 엘리먼트로 동기화 유지 */}
+            {!videoSrc && (
+              <div className="hidden">
+                <VideoCanvas
+                  ref={videoRef}
+                  src={null}
+                  ball={ball}
+                  showOverlay={false}
+                  lastPulse={false}
+                  onLoadedMetadata={() => setDuration(videoRef.current?.duration ?? 0)}
+                  onTimeUpdate={() => setCurrentTime(videoRef.current?.currentTime ?? 0)}
+                  onPlay={handlePlay}
+                  onPause={handlePause}
+                  onEnded={handleEnded}
+                />
+              </div>
+            )}
 
             {/* 3. 피치 레이더 — 공 위치 시각화 */}
             <div className="px-4 py-4 border-b border-border">

@@ -22,7 +22,7 @@ export const VideoCanvas = forwardRef<HTMLVideoElement, VideoCanvasProps>(functi
   ref,
 ) {
   return (
-    <div className="relative aspect-video w-full overflow-hidden rounded-xl border border-border bg-black">
+    <div className="relative aspect-video w-full overflow-hidden rounded-none border-0 bg-black md:rounded-xl md:border md:border-border">
       {src ? (
         <video
           ref={ref}
