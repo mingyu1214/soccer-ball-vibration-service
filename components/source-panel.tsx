@@ -46,26 +46,36 @@ export function SourcePanel({
           onChange={(e) => e.target.files?.[0] && onDetectionFile(e.target.files[0])}
         />
 
-        <Button variant="outline" className="justify-start" onClick={() => videoInput.current?.click()}>
-          <Film className="size-4" />
+        {/* 감지 데이터는 앱에 내장됨 — 사용자는 영상만 넣으면 됨 */}
+        <div className="flex items-center gap-2 rounded-md bg-primary/10 px-3 py-2 text-xs text-primary">
+          <Check className="size-4 shrink-0" />
+          <span className="text-pretty">감지 데이터가 앱에 내장되어 있습니다. 영상만 업로드하면 바로 재생됩니다.</span>
+        </div>
+
+        <Button className="h-12 justify-start text-base" onClick={() => videoInput.current?.click()}>
+          <Film className="size-5" />
           <span className="flex-1 text-left">경기 영상 업로드</span>
-          {hasVideo && <Check className="size-4 text-primary" />}
-        </Button>
-
-        <Button variant="outline" className="justify-start" onClick={() => jsonInput.current?.click()}>
-          <FileJson className="size-4" />
-          <span className="flex-1 text-left">감지 JSON 업로드</span>
-          {hasDetection && <Check className="size-4 text-primary" />}
-        </Button>
-
-        <Button variant="secondary" className="justify-start" onClick={onUseSample}>
-          <Sparkles className="size-4" />
-          <span className="flex-1 text-left">샘플 감지 데이터 생성</span>
+          {hasVideo && <Check className="size-5" />}
         </Button>
       </div>
 
       {detectionInfo && <p className="mt-3 text-xs text-muted-foreground text-pretty">{detectionInfo}</p>}
       {error && <p className="mt-3 rounded-md bg-destructive/15 px-3 py-2 text-xs text-destructive text-pretty">{error}</p>}
+
+      <details className="mt-4 text-xs text-muted-foreground">
+        <summary className="cursor-pointer font-medium text-foreground">다른 감지 JSON으로 교체 (선택)</summary>
+        <div className="mt-2 flex flex-col gap-2">
+          <Button variant="outline" className="justify-start" onClick={() => jsonInput.current?.click()}>
+            <FileJson className="size-4" />
+            <span className="flex-1 text-left">감지 JSON 업로드</span>
+            {hasDetection && <Check className="size-4 text-primary" />}
+          </Button>
+          <Button variant="secondary" className="justify-start" onClick={onUseSample}>
+            <Sparkles className="size-4" />
+            <span className="flex-1 text-left">샘플 감지 데이터 생성</span>
+          </Button>
+        </div>
+      </details>
 
       <details className="mt-4 text-xs text-muted-foreground">
         <summary className="cursor-pointer font-medium text-foreground">감지 JSON 형식</summary>
