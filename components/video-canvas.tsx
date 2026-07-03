@@ -8,8 +8,6 @@ interface VideoCanvasProps {
   src: string | null
   ball: BallState
   showOverlay: boolean
-  /** 경기가 선택되었는지 (영상 없는 소리·진동 전용 경기 안내용) */
-  hasMatch?: boolean
   lastPulse: boolean
   onLoadedMetadata?: () => void
   onTimeUpdate?: () => void
@@ -18,9 +16,9 @@ interface VideoCanvasProps {
   onEnded?: () => void
 }
 
-/** 영상(있을 때) + 공 위치 오버레이 마커. 영상이 없으면 소리·진동 전용 안내를 표시 */
+/** 업로드된 영상 + 공 위치 오버레이 마커 */
 export const VideoCanvas = forwardRef<HTMLVideoElement, VideoCanvasProps>(function VideoCanvas(
-  { src, ball, showOverlay, hasMatch = false, lastPulse, onLoadedMetadata, onTimeUpdate, onPlay, onPause, onEnded },
+  { src, ball, showOverlay, lastPulse, onLoadedMetadata, onTimeUpdate, onPlay, onPause, onEnded },
   ref,
 ) {
   return (
@@ -38,26 +36,10 @@ export const VideoCanvas = forwardRef<HTMLVideoElement, VideoCanvasProps>(functi
           onEnded={onEnded}
         />
       ) : (
-        <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-6 text-center">
-          {hasMatch ? (
-            <>
-              <span
-                className={cn(
-                  "block size-8 rounded-full border-2 border-primary bg-primary/30 transition-transform",
-                  lastPulse && "scale-150",
-                )}
-                aria-hidden="true"
-              />
-              <p className="text-sm font-medium text-foreground text-balance">소리·진동 전용 경기</p>
-              <p className="text-xs text-muted-foreground text-balance">
-                재생을 누르면 진동과 소리로 공을 전달합니다. 아래 레이더에서 위치를 볼 수 있습니다.
-              </p>
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground text-balance">
-              오른쪽 목록에서 경기를 선택하세요.
-            </p>
-          )}
+        <div className="flex h-full w-full items-center justify-center px-6 text-center">
+          <p className="text-sm text-muted-foreground text-balance">
+            영상 파일을 업로드하면 여기에 공 위치가 표시됩니다.
+          </p>
         </div>
       )}
 
