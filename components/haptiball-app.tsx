@@ -353,7 +353,8 @@ export function HaptiBallApp() {
               </div>
             </section>
 
-            {/* 2-1. 영상 — 모바일에서도 표시 */}
+            {/* 2-1. 영상 — videoSrc가 있을 때만 표시 */}
+            {videoSrc && (
             <div className="border-b border-border">
               <VideoCanvas
                 ref={videoRef}
@@ -368,6 +369,7 @@ export function HaptiBallApp() {
                 onEnded={handleEnded}
               />
             </div>
+            )}
 
             {/* 3. 진동 세기 + 이벤트 — 하단 */}
             <div className="px-4 py-4 flex flex-col gap-4">
