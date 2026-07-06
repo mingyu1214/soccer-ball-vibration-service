@@ -15,7 +15,6 @@ import {
 import { DEFAULT_SETTINGS, HapticEngine, type HapticSettings } from "@/lib/haptics"
 import { initVibrationBridge, isNativeApp, isVibrationAvailable } from "@/lib/vibration-bridge"
 import { VideoCanvas } from "@/components/video-canvas"
-import { PitchRadar } from "@/components/pitch-radar"
 import { HapticControls } from "@/components/haptic-controls"
 import { EventLog } from "@/components/event-log"
 import { AboutPage } from "@/components/about-page"
