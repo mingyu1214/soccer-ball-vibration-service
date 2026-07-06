@@ -38,8 +38,6 @@ export const VideoCanvas = forwardRef<HTMLVideoElement, VideoCanvasProps>(functi
             onPause={onPause}
             onEnded={onEnded}
           />
-          {/* 네이티브 컨트롤 오버레이 차단 — 모바일에서 탭해도 브라우저 UI 안 뜨게 */}
-          <div className="absolute inset-0" aria-hidden="true" />
         </>
       ) : (
         <div className="flex h-full w-full items-center justify-center px-6 text-center">
