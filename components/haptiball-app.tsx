@@ -388,6 +388,7 @@ export function HaptiBallApp() {
           <main className="mx-auto hidden max-w-6xl px-8 py-8 md:block">
             <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
               <div className="flex flex-col gap-5">
+                {videoSrc && (
                 <VideoCanvas
                   ref={videoRef}
                   src={videoSrc}
@@ -400,6 +401,7 @@ export function HaptiBallApp() {
                   onPause={handlePause}
                   onEnded={handleEnded}
                 />
+                )}
                 <section id="controls" className="rounded-2xl border border-border bg-card p-5" aria-label="재생 컨트롤">
                   <div className="flex items-center gap-3">
                     <Button
