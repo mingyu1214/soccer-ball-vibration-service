@@ -42,30 +42,32 @@ export const VideoCanvas = forwardRef<HTMLVideoElement, VideoCanvasProps>(functi
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    // 영상 메타데이터 로드 후 canvas 크기 설정
+    // 영상 메타데이터 로드 후 canvas 크기 설정 및 첫 프레임 그리기
     const handleLoadedMetadata = () => {
       canvas.width = video.videoWidth
       canvas.height = video.videoHeight
+      // 첫 프레임 렌더링
+      ctx.drawImage(video, 0, 0)
       onLoadedMetadata?.()
     }
 
     // 매 프레임 canvas에 렌더링
     const drawFrame = () => {
-      if (video.paused && video.ended === false) {
+      if (video.paused) {
         animationIdRef.current = null
         return
       }
       
       ctx.drawImage(video, 0, 0)
       onTimeUpdate?.()
-      
-      if (!video.paused || video.currentTime > 0) {
-        animationIdRef.current = requestAnimationFrame(drawFrame)
-      }
+      animationIdRef.current = requestAnimationFrame(drawFrame)
     }
 
     const handlePlay = () => {
       onPlay?.()
+      // 즉시 한 프레임 그리고 loop 시작
+      ctx.drawImage(video, 0, 0)
+      onTimeUpdate?.()
       if (animationIdRef.current === null) {
         animationIdRef.current = requestAnimationFrame(drawFrame)
       }
