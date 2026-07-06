@@ -21,6 +21,8 @@ import { AboutPage } from "@/components/about-page"
 
 const EMPTY_BALL: BallState = { detected: false, nx: 0.5, ny: 0.5, speed: 0, angle: 0, vx: 0, vy: 0 }
 
+type DemoClip = { id: string; title: string; video: string; detection: string }
+
 function horizontalWord(nx: number): string {
   if (nx < 0.33) return "왼쪽"
   if (nx > 0.67) return "오른쪽"
@@ -79,37 +81,44 @@ export function HaptiBallApp() {
     void label
   }, [])
 
-  // 내장 감지 데이터 자동 로드
+  // 시연 클립 목록 로드 (public/demos.json)
+  const [demos, setDemos] = useState<DemoClip[]>([])
+  const [activeDemoId, setActiveDemoId] = useState<string | null>(null)
+
   useEffect(() => {
     let cancelled = false
-    ;(async () => {
-      try {
-        const res = await fetch("/detection.json")
-        if (!res.ok) throw new Error(`HTTP ${res.status}`)
-        const parsed = parseDetectionData(await res.json())
-        if (!cancelled) applyDetection(parsed, "내장 감지 데이터")
-      } catch (e) {
-        if (!cancelled) setError(`감지 데이터 로드 실패: ${e instanceof Error ? e.message : String(e)}`)
-      }
-    })()
+    fetch("/demos.json")
+      .then((res) => res.json())
+      .then((data: DemoClip[]) => { if (!cancelled) setDemos(data) })
+      .catch(() => { if (!cancelled) setError("시연 클립 목록을 불러오지 못했습니다.") })
     return () => { cancelled = true }
-  }, [applyDetection])
-
-  const handleVideoFile = useCallback((file: File) => {
-    const url = URL.createObjectURL(file)
-    setVideoSrc((prev) => { if (prev) URL.revokeObjectURL(prev); return url })
-    setError(null)
   }, [])
 
-  const handleDetectionFile = useCallback(async (file: File) => {
+  const selectDemo = useCallback(async (demo: DemoClip) => {
+    setError(null)
+    setActiveDemoId(demo.id)
+    setVideoSrc((prev) => {
+      if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev)
+      return demo.video
+    })
     try {
-      const text = await file.text()
-      const parsed = parseDetectionData(JSON.parse(text))
-      applyDetection(parsed, file.name)
+      const res = await fetch(demo.detection)
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const parsed = parseDetectionData(await res.json())
+      applyDetection(parsed, demo.title)
     } catch (e) {
-      setError(`감지 JSON 오류: ${e instanceof Error ? e.message : String(e)}`)
+      setError(`감지 데이터 로드 실패: ${e instanceof Error ? e.message : String(e)}`)
     }
   }, [applyDetection])
+
+  // 사용자가 직접 업로드한 영상: 재생만 가능, 진동은 지원하지 않음 (감지 데이터가 없으므로)
+  const handleVideoFile = useCallback((file: File) => {
+    const url = URL.createObjectURL(file)
+    setActiveDemoId(null)
+    setDetection(null)
+    setVideoSrc((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url })
+    setError(null)
+  }, [])
 
   const fireEventsBetween = useCallback((from: number, to: number, list: BallEvent[]) => {
     const engine = engineRef.current
@@ -189,7 +198,7 @@ export function HaptiBallApp() {
     ? activeEventLabel
     : ball.detected
       ? `공: ${horizontalWord(ball.nx)}`
-      : ready ? "공 추적 대기 중" : "영상을 업로드하세요"
+      : ready ? "공 추적 대기 중" : "시연 클립을 선택하세요"
 
   return (
     <div className="min-h-screen bg-background">
@@ -260,7 +269,33 @@ export function HaptiBallApp() {
           {/* ── 모바일 레이아웃 ── */}
           <div className="flex flex-col md:hidden">
 
-            {/* 1. 영상 업로드 / 업로드 완료 버튼 — 맨 위 */}
+            {/* 0. 시연 클립 선택 — 진동이 실제로 동작하는 유일한 방법 */}
+            <div className="border-b border-border bg-card px-4 py-3">
+              <h2 className="mb-2 text-sm font-bold text-foreground">시연 클립 선택</h2>
+              <div className="flex flex-col gap-2">
+                {demos.map((demo) => (
+                  <button
+                    key={demo.id}
+                    onClick={() => selectDemo(demo)}
+                    aria-pressed={activeDemoId === demo.id}
+                    className={[
+                      "flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-bold",
+                      activeDemoId === demo.id
+                        ? "border-primary bg-primary/10 text-primary"
+                        : "border-border bg-secondary/40 text-foreground hover:bg-secondary",
+                    ].join(" ")}
+                  >
+                    {demo.title}
+                    {activeDemoId === demo.id && <span aria-hidden="true">✓</span>}
+                  </button>
+                ))}
+                {demos.length === 0 && (
+                  <p className="text-sm text-muted-foreground">시연 클립을 불러오는 중입니다...</p>
+                )}
+              </div>
+            </div>
+
+            {/* 1. 직접 업로드 — 재생 미리보기만 가능, 진동은 지원하지 않음 */}
             <div className="border-b border-border bg-card px-4 py-3">
               <input
                 ref={videoInputRef}
@@ -270,25 +305,14 @@ export function HaptiBallApp() {
                 aria-hidden="true"
                 onChange={(e) => e.target.files?.[0] && handleVideoFile(e.target.files[0])}
               />
-              {videoSrc ? (
-                <button
-                  onClick={() => videoInputRef.current?.click()}
-                  className="flex w-full items-center gap-3 rounded-xl border border-primary/30 bg-primary/8 px-4 py-3 text-left"
-                  aria-label="다른 영상으로 교체"
-                >
-                  <span className="text-sm font-bold text-primary flex-1">영상 로드됨 — 탭하여 교체</span>
-                  <Upload className="size-4 text-primary" aria-hidden="true" />
-                </button>
-              ) : (
-                <button
-                  onClick={() => videoInputRef.current?.click()}
-                  className="flex w-full items-center justify-center gap-3 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 px-4 py-5"
-                  aria-label="경기 영상 파일 선택"
-                >
-                  <Upload className="size-5 text-primary/60" aria-hidden="true" />
-                  <span className="text-base font-bold text-foreground">경기 영상 업로드</span>
-                </button>
-              )}
+              <button
+                onClick={() => videoInputRef.current?.click()}
+                className="flex w-full items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border bg-secondary/20 px-4 py-4"
+                aria-label="내 영상 업로드 (미리보기 전용, 진동 미지원)"
+              >
+                <Upload className="size-5 text-muted-foreground" aria-hidden="true" />
+                <span className="text-sm font-bold text-muted-foreground">내 영상 업로드 (미리보기만, 진동 없음)</span>
+              </button>
               {error && (
                 <p className="mt-2 rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive" role="alert">{error}</p>
               )}
@@ -329,8 +353,9 @@ export function HaptiBallApp() {
               </div>
             </section>
 
-            {/* 2-1. 영상 — 항상 DOM에 존재해야 ref가 동작함. videoSrc 없으면 숨김 */}
-            <div className={videoSrc ? "border-b border-border" : "hidden"}>
+            {/* 2-1. 영상 — 업로드 시에만 표시 */}
+            {videoSrc && (
+            <div className="border-b border-border">
               <VideoCanvas
                 ref={videoRef}
                 src={videoSrc}
@@ -344,6 +369,7 @@ export function HaptiBallApp() {
                 onEnded={handleEnded}
               />
             </div>
+            )}
 
             {/* 3. 진동 세기 + 이벤트 — 하단 */}
             <div className="px-4 py-4 flex flex-col gap-4">
@@ -401,56 +427,59 @@ export function HaptiBallApp() {
                   </div>
                   {!ready && (
                     <p className="mt-4 rounded-xl bg-primary/8 px-4 py-3 text-sm font-medium text-primary text-pretty">
-                      감지 데이터가 내장되어 있습니다. 경기 영상만 업로드하면 진동이 시작됩니다.
+                      오른쪽에서 시연 클립을 선택하면 진동이 시작됩니다.
                     </p>
                   )}
                 </section>
               </div>
               <div className="flex flex-col gap-5">
-                {/* 데스크톱 업로드 패널 인라인 */}
-                <section className="rounded-2xl border border-border bg-card p-5" aria-label="영상 불러오기">
-                  <h2 className="mb-4 text-base font-bold text-foreground">영상 불러오기</h2>
+                {/* 시연 클립 선택 — 진동이 실제로 동작하는 유일한 방법 */}
+                <section className="rounded-2xl border border-border bg-card p-5" aria-label="시연 클립 선택">
+                  <h2 className="mb-4 text-base font-bold text-foreground">시연 클립 선택</h2>
+                  <div className="flex flex-col gap-2">
+                    {demos.map((demo) => (
+                      <button
+                        key={demo.id}
+                        onClick={() => selectDemo(demo)}
+                        aria-pressed={activeDemoId === demo.id}
+                        className={[
+                          "flex items-center justify-between rounded-xl border px-4 py-3 text-left text-sm font-bold",
+                          activeDemoId === demo.id
+                            ? "border-primary bg-primary/10 text-primary"
+                            : "border-border bg-secondary/40 text-foreground hover:bg-secondary",
+                        ].join(" ")}
+                      >
+                        {demo.title}
+                        {activeDemoId === demo.id && <span aria-hidden="true">✓</span>}
+                      </button>
+                    ))}
+                    {demos.length === 0 && (
+                      <p className="text-sm text-muted-foreground">시연 클립을 불러오는 중입니다...</p>
+                    )}
+                  </div>
+                  {error && <p className="mt-3 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">{error}</p>}
+                </section>
+
+                {/* 직접 업로드 — 재생 미리보기만 가능, 진동은 지원하지 않음 */}
+                <section className="rounded-2xl border border-border bg-card p-5" aria-label="내 영상 업로드">
+                  <h2 className="mb-3 text-base font-bold text-foreground">내 영상 업로드</h2>
+                  <p className="mb-3 text-sm text-muted-foreground">현재는 위 시연 클립만 진동이 지원됩니다. 직접 올린 영상은 미리보기(재생)만 가능해요.</p>
                   <input
                     type="file" accept="video/*" className="hidden" aria-hidden="true"
                     onChange={(e) => e.target.files?.[0] && handleVideoFile(e.target.files[0])}
                     ref={(el) => { if (el && !videoInputRef.current) (videoInputRef as React.MutableRefObject<HTMLInputElement | null>).current = el }}
                   />
-                  <div className="mb-3 flex items-start gap-2 rounded-xl bg-primary/8 px-4 py-3">
-                    <span className="mt-0.5 size-4 shrink-0 text-primary" aria-hidden="true">✓</span>
-                    <p className="text-sm font-medium text-primary">감지 데이터 내장 완료. 영상만 업로드하면 진동이 시작됩니다.</p>
-                  </div>
-                  {videoSrc ? (
-                    <button
-                      onClick={() => videoInputRef.current?.click()}
-                      className="flex w-full items-center gap-3 rounded-xl border-2 border-primary bg-primary/8 px-4 py-4"
-                      aria-label="다른 영상으로 교체"
-                    >
-                      <span className="flex-1 text-sm font-bold text-primary text-left">영상 로드됨 — 클릭하여 교체</span>
-                      <Upload className="size-4 text-primary" />
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => videoInputRef.current?.click()}
-                      className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-primary/40 bg-primary/5 px-4 py-8 text-center hover:border-primary hover:bg-primary/10"
-                      aria-label="경기 영상 파일 선택"
-                    >
-                      <Upload className="size-8 text-primary/60" />
-                      <div>
-                        <p className="text-base font-bold text-foreground">경기 영상 업로드</p>
-                        <p className="mt-1 text-sm text-muted-foreground">MP4, MOV, AVI 등</p>
-                      </div>
-                    </button>
-                  )}
-                  {error && <p className="mt-3 rounded-xl bg-destructive/10 px-4 py-3 text-sm text-destructive" role="alert">{error}</p>}
-                  {/* JSON 교체 */}
-                  <details className="mt-4">
-                    <summary className="cursor-pointer text-xs font-semibold text-muted-foreground hover:text-foreground">다른 감지 JSON으로 교체</summary>
-                    <input type="file" accept="application/json,.json" className="hidden" id="json-upload-desktop"
-                      onChange={(e) => e.target.files?.[0] && handleDetectionFile(e.target.files[0])} />
-                    <label htmlFor="json-upload-desktop" className="mt-2 flex cursor-pointer items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium hover:bg-secondary">
-                      감지 JSON 업로드
-                    </label>
-                  </details>
+                  <button
+                    onClick={() => videoInputRef.current?.click()}
+                    className="flex w-full flex-col items-center gap-3 rounded-xl border-2 border-dashed border-border bg-secondary/20 px-4 py-8 text-center hover:bg-secondary/30"
+                    aria-label="내 영상 업로드 (미리보기 전용, 진동 미지원)"
+                  >
+                    <Upload className="size-8 text-muted-foreground" />
+                    <div>
+                      <p className="text-base font-bold text-foreground">영상 업로드</p>
+                      <p className="mt-1 text-sm text-muted-foreground">MP4, MOV, AVI 등 (미리보기만)</p>
+                    </div>
+                  </button>
                 </section>
                 <HapticControls settings={settings} supported={supported} native={native} onChange={setSettings} onTest={() => engineRef.current?.testPulse()} />
                 <EventLog events={events} currentTime={currentTime} onSeek={seek} />

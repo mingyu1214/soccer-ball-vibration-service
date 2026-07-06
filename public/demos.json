@@ -1,0 +1,8 @@
+[
+  {
+    "id": "clip-01",
+    "title": "샘플 클립 1",
+    "video": "/demos/clip-01/video.mp4",
+    "detection": "/demos/clip-01/detection.json"
+  }
+]
