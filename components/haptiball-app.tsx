@@ -15,7 +15,6 @@ import {
 import { DEFAULT_SETTINGS, HapticEngine, type HapticSettings } from "@/lib/haptics"
 import { initVibrationBridge, isNativeApp, isVibrationAvailable } from "@/lib/vibration-bridge"
 import { VideoCanvas } from "@/components/video-canvas"
-import { PitchRadar } from "@/components/pitch-radar"
 import { HapticControls } from "@/components/haptic-controls"
 import { EventLog } from "@/components/event-log"
 import { AboutPage } from "@/components/about-page"
@@ -199,7 +198,7 @@ export function HaptiBallApp() {
     ? activeEventLabel
     : ball.detected
       ? `공: ${horizontalWord(ball.nx)}`
-      : ready ? "공 추적 대기 중" : "시연 클립을 선택하세요"
+      : ready ? "공 추적 대�� 중" : "시연 클립을 선택하세요"
 
   return (
     <div className="min-h-screen bg-background">
@@ -354,7 +353,8 @@ export function HaptiBallApp() {
               </div>
             </section>
 
-            {/* 2-1. 영상 — 모바일에서도 표시 */}
+            {/* 2-1. 영상 — videoSrc가 있을 때만 표시 */}
+            {videoSrc && (
             <div className="border-b border-border">
               <VideoCanvas
                 ref={videoRef}
@@ -369,13 +369,9 @@ export function HaptiBallApp() {
                 onEnded={handleEnded}
               />
             </div>
+            )}
 
-            {/* 3. 피치 레이더 — 공 위치 시각화 */}
-            <div className="px-4 py-4 border-b border-border">
-              <PitchRadar ball={ball} />
-            </div>
-
-            {/* 4. 진동 세기 + 이벤트 — 하단 */}
+            {/* 3. 진동 세기 + 이벤트 — 하단 */}
             <div className="px-4 py-4 flex flex-col gap-4">
               <HapticControls
                 settings={settings}
@@ -435,7 +431,6 @@ export function HaptiBallApp() {
                     </p>
                   )}
                 </section>
-                <PitchRadar ball={ball} />
               </div>
               <div className="flex flex-col gap-5">
                 {/* 시연 클립 선택 — 진동이 실제로 동작하는 유일한 방법 */}
