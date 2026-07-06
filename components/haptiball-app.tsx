@@ -171,8 +171,16 @@ export function HaptiBallApp() {
   const togglePlay = () => {
     const video = videoRef.current
     if (!video || !videoSrc) return
-    if (video.paused) video.play()
-    else video.pause()
+    if (video.paused) {
+      const playPromise = video.play()
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.error("[v0] Play error:", err.name)
+        })
+      }
+    } else {
+      video.pause()
+    }
   }
 
   const restart = () => {
