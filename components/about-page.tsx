@@ -90,19 +90,40 @@ export function AboutPage() {
           <h3 id="stack-heading" className="text-xl font-bold text-foreground">기술 스택</h3>
         </div>
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {[
-            { cat: "AI / 감지", items: ["YOLOv8 (Ultralytics)", "Python · OpenCV", "JSON 감지 포맷"] },
-            { cat: "프론트엔드", items: ["Next.js 16 (App Router)", "React 19", "TypeScript"] },
-            { cat: "스타일링", items: ["Tailwind CSS v4", "shadcn/ui", "Lucide Icons"] },
-            { cat: "진동 / 햅틱", items: ["Web Vibration API", "Capacitor Haptics", "Web Audio API"] },
-            { cat: "모바일 앱", items: ["Capacitor v6", "iOS (네이티브 햅틱)", "Android (Chrome)"] },
-            { cat: "배포", items: ["Vercel (웹)", "Xcode / Android Studio (앱)", "PWA 지원"] },
-          ].map(({ cat, items }) => (
+          {STACK.map(({ cat, items }) => (
             <div key={cat} className="rounded-2xl border border-border bg-card p-4">
               <p className="mb-2 text-xs font-bold uppercase tracking-widest text-primary">{cat}</p>
-              <ul className="flex flex-col gap-1">
-                {items.map((item) => (
-                  <li key={item} className="text-sm text-foreground">{item}</li>
+              <ul className="flex flex-col gap-2">
+                {items.map(({ name, detail }) => (
+                  <li key={name}>
+                    <span className="text-sm font-semibold text-foreground">{name}</span>
+                    {detail && <span className="block text-xs text-muted-foreground">{detail}</span>}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 핵심 알고리즘 */}
+      <section className="mb-10" aria-labelledby="algo-heading">
+        <div className="mb-5 flex items-center gap-3">
+          <div className="flex size-9 items-center justify-center rounded-xl bg-primary/15" aria-hidden="true">
+            <Cpu className="size-5 text-primary" />
+          </div>
+          <h3 id="algo-heading" className="text-xl font-bold text-foreground">핵심 알고리즘 상세</h3>
+        </div>
+        <div className="flex flex-col gap-4">
+          {ALGOS.map(({ title, items }) => (
+            <div key={title} className="rounded-2xl border border-border bg-card p-5">
+              <p className="mb-3 font-bold text-foreground">{title}</p>
+              <ul className="flex flex-col gap-3">
+                {items.map(({ label, desc }) => (
+                  <li key={label} className="flex gap-3">
+                    <span className="mt-0.5 h-fit shrink-0 rounded-md bg-primary/10 px-2 py-0.5 text-xs font-bold text-primary">{label}</span>
+                    <p className="text-sm leading-relaxed text-muted-foreground">{desc}</p>
+                  </li>
                 ))}
               </ul>
             </div>
@@ -152,6 +173,112 @@ export function AboutPage() {
     </main>
   )
 }
+
+// ---- 데이터 ----
+
+const STACK: { cat: string; items: { name: string; detail?: string }[] }[] = [
+  {
+    cat: "AI / 객체 탐지",
+    items: [
+      { name: "YOLOv8 (Ultralytics)", detail: "축구공 탐지 모델. Python·OpenCV로 영상 분석 후 JSON 출력" },
+      { name: "감지 JSON 포맷", detail: "{ fps, width, height, frames[{t, x, y, conf}] } — 프레임별 공 좌표" },
+      { name: "신뢰도 필터 (conf < 0.3)", detail: "저신뢰도 프레임 자동 null 처리" },
+    ],
+  },
+  {
+    cat: "프레임워크",
+    items: [
+      { name: "Next.js 16 (App Router)", detail: "서버 컴포넌트 + 클라이언트 컴포넌트 혼합 구조" },
+      { name: "React 19", detail: "useCallback·useRef·useState·useEffect 기반 재생 루프" },
+      { name: "TypeScript 5.7", detail: "엄격한 타입으로 DetectionFrame·BallState·HapticSettings 정의" },
+    ],
+  },
+  {
+    cat: "스타일링 / UI",
+    items: [
+      { name: "Tailwind CSS v4", detail: "@theme 블록으로 디자인 토큰(색상·폰트·반경) 관리" },
+      { name: "shadcn/ui + Base UI", detail: "Button 컴포넌트, 접근성 primitive" },
+      { name: "Lucide React v1.16", detail: "아이콘 라이브러리" },
+    ],
+  },
+  {
+    cat: "진동 엔진",
+    items: [
+      { name: "Web Vibration API", detail: "navigator.vibrate(pattern[]) — 안드로이드 Chrome에서 동작" },
+      { name: "@capacitor/haptics v8", detail: "iOS 네이티브 햅틱 브릿지. ImpactStyle Light/Medium/Heavy" },
+      { name: "HapticEngine (커스텀)", detail: "속도 기반 지속 진동 + 이벤트별 패턴([on,off,on,…] ms 배열)" },
+      { name: "Vibration Bridge", detail: "웹/네이티브를 자동 감지해 같은 API로 진동 발생" },
+    ],
+  },
+  {
+    cat: "운동학 계산 (detection.ts)",
+    items: [
+      { name: "이진 탐색 프레임 조회", detail: "O(log n)으로 현재 시간의 프레임 인덱스 탐색" },
+      { name: "선형 보간 (Lerp)", detail: "인접 프레임 사이 공 위치를 시간 비율로 보간" },
+      { name: "차분 속도 계산", detail: "vx = (dx/dt)/width, vy = (dy/dt)/height → 정규화 속도" },
+      { name: "이벤트 타임라인 빌더", detail: "20Hz 샘플링으로 슛·방향전환·진영이동·소실 이벤트 사전 생성" },
+    ],
+  },
+  {
+    cat: "데이터 전처리 (cleanFrames)",
+    items: [
+      { name: "Freeze 감지", detail: "동일 좌표 10프레임 이상 연속 → null 처리 (YOLO freeze 제거)" },
+      { name: "점프 필터", detail: "0.033초 안에 250px 이상 이동 시 오검출로 판정 → null" },
+      { name: "저신뢰도 제거", detail: "conf < 0.3 프레임 null 처리 → 공 튐 현상 방지" },
+    ],
+  },
+  {
+    cat: "재생 동기화",
+    items: [
+      { name: "requestAnimationFrame 루프", detail: "video.currentTime 기준으로 매 프레임 공 상태 계산" },
+      { name: "이벤트 쿨다운", detail: "동일 이벤트 최소 간격(0.4~0.6초) 적용으로 중복 진동 방지" },
+      { name: "seek 처리", desc: "재생 위치 변경 시 lastProcessedT 리셋으로 이벤트 재발화 방지" } as { name: string; detail?: string },
+    ],
+  },
+  {
+    cat: "모바일 앱 (Capacitor)",
+    items: [
+      { name: "@capacitor/core v8.4", detail: "isNativePlatform()으로 웹/네이티브 자동 분기" },
+      { name: "정적 Export (CAP_BUILD=1)", detail: "next build → out/ 폴더를 Capacitor webDir로 사용" },
+      { name: "iOS / Android 동시 지원", detail: "cap add ios / cap add android 한 번으로 빌드 가능" },
+    ],
+  },
+  {
+    cat: "배포 / 인프라",
+    items: [
+      { name: "Vercel", detail: "GitHub main 브랜치 push 시 자동 프로덕션 배포" },
+      { name: "@vercel/analytics", detail: "페이지 뷰·이벤트 분석 (클라이언트 사이드)" },
+      { name: "pnpm 워크스페이스", detail: "패키지 매니저. hono 4.12.25 override 적용" },
+    ],
+  },
+]
+
+const ALGOS: { title: string; items: { label: string; desc: string }[] }[] = [
+  {
+    title: "공 상태 계산 파이프라인 (computeBallState)",
+    items: [
+      { label: "이진 탐색", desc: "frames 배열에서 현재 재생 시간 t 이하의 마지막 프레임을 O(log n)으로 찾습니다." },
+      { label: "선형 보간", desc: "현재 프레임(cur)과 다음 프레임(next) 사이를 ratio = (t - cur.t) / (next.t - cur.t) 비율로 보간해 부드러운 공 위치를 계산합니다." },
+      { label: "차분 속도", desc: "vx = (ref.x - cur.x) / dt / width 로 정규화. speed = hypot(vx, vy). 초당 화면 폭 대비 이동량으로 표현됩니다." },
+    ],
+  },
+  {
+    title: "진동 엔진 동작 방식 (HapticEngine)",
+    items: [
+      { label: "지속 진동 (tickContinuous)", desc: "공 속도를 0~1.2 구간으로 정규화해 slowInterval(520ms)~fastInterval(90ms) 사이의 펄스 간격을 선형 보간합니다. 공이 빠를수록 진동이 잦아집니다." },
+      { label: "펄스 길이", desc: "ball.ny(화면 세로 위치, 0=위~1=아래)로 근접도를 표현. duration = 18 + ny×40 + speed×45 ms. 공이 아래쪽(가까운 카메라)일수록 강하게 진동합니다." },
+      { label: "이벤트 패턴", desc: "슛=[180~360ms 단발], 방향전환=[60ms, 50, 60ms 더블탭], 소실=[40,40,40,40,40ms 3연타], 재추적=[50,40,90ms]. fireEvent() 호출 후 패턴 총 길이만큼 지속 진동을 억제합니다." },
+    ],
+  },
+  {
+    title: "이벤트 타임라인 빌더 (buildEventTimeline)",
+    items: [
+      { label: "사전 계산", desc: "재생 시작 전 20Hz(0.05초 간격)로 전체 구간을 스캔해 이벤트 배열을 미리 만듭니다. 재생 중에는 조회만 하면 됩니다." },
+      { label: "슛 감지", desc: "speed ≥ 3.0(화면폭/초) 이상이고 직전 상태보다 증가했을 때 슛 이벤트로 판정합니다(쿨다운 0.4초)." },
+      { label: "방향 전환", desc: "연속 두 샘플의 이동 각도 차이가 72도(π/2.5) 이상이면 방향 전환으로 판정합니다(쿨다운 0.5초)." },
+    ],
+  },
+]
 
 function RAICard({ icon, title, desc }: { icon: React.ReactNode; title: string; desc: string }) {
   return (

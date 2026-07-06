@@ -15,7 +15,6 @@ import {
 import { DEFAULT_SETTINGS, HapticEngine, type HapticSettings } from "@/lib/haptics"
 import { initVibrationBridge, isNativeApp, isVibrationAvailable } from "@/lib/vibration-bridge"
 import { VideoCanvas } from "@/components/video-canvas"
-import { PitchRadar } from "@/components/pitch-radar"
 import { HapticControls } from "@/components/haptic-controls"
 import { EventLog } from "@/components/event-log"
 import { AboutPage } from "@/components/about-page"
@@ -205,7 +204,7 @@ export function HaptiBallApp() {
     <div className="min-h-screen bg-background">
       <p aria-live="assertive" className="sr-only">{liveStatus}</p>
       <a href="#play-btn" className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-lg focus:bg-primary focus:px-4 focus:py-2 focus:text-primary-foreground">
-        재생 버튼으로 건너뛰기
+        재생 버튼으로 건��뛰기
       </a>
 
       {/* 헤더 */}
@@ -354,7 +353,8 @@ export function HaptiBallApp() {
               </div>
             </section>
 
-            {/* 2-1. 영상 — 모바일에서도 표시 */}
+            {/* 2-1. 영상 — 업로드 시에만 표시 */}
+            {videoSrc && (
             <div className="border-b border-border">
               <VideoCanvas
                 ref={videoRef}
@@ -369,13 +369,9 @@ export function HaptiBallApp() {
                 onEnded={handleEnded}
               />
             </div>
+            )}
 
-            {/* 3. 피치 레이더 — 공 위치 시각화 */}
-            <div className="px-4 py-4 border-b border-border">
-              <PitchRadar ball={ball} />
-            </div>
-
-            {/* 4. 진동 세기 + 이벤트 — 하단 */}
+            {/* 3. 진동 세기 + 이벤트 — 하단 */}
             <div className="px-4 py-4 flex flex-col gap-4">
               <HapticControls
                 settings={settings}
@@ -392,6 +388,7 @@ export function HaptiBallApp() {
           <main className="mx-auto hidden max-w-6xl px-8 py-8 md:block">
             <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
               <div className="flex flex-col gap-5">
+                {videoSrc && (
                 <VideoCanvas
                   ref={videoRef}
                   src={videoSrc}
@@ -404,6 +401,7 @@ export function HaptiBallApp() {
                   onPause={handlePause}
                   onEnded={handleEnded}
                 />
+                )}
                 <section id="controls" className="rounded-2xl border border-border bg-card p-5" aria-label="재생 컨트롤">
                   <div className="flex items-center gap-3">
                     <Button
@@ -435,7 +433,6 @@ export function HaptiBallApp() {
                     </p>
                   )}
                 </section>
-                <PitchRadar ball={ball} />
               </div>
               <div className="flex flex-col gap-5">
                 {/* 시연 클립 선택 — 진동이 실제로 동작하는 유일한 방법 */}
