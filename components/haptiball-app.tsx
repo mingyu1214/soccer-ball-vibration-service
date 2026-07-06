@@ -50,6 +50,7 @@ export function HaptiBallApp() {
   const [activeEventLabel, setActiveEventLabel] = useState<string | null>(null)
   const [supported, setSupported] = useState(false)
   const [native, setNative] = useState(false)
+  const [isDesktop, setIsDesktop] = useState(true)
   const [liveStatus, setLiveStatus] = useState("")
   const [tab, setTab] = useState<"service" | "about">("service")
   const lastLiveSide = useRef<string | null>(null)
