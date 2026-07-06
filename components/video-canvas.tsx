@@ -28,7 +28,6 @@ export const VideoCanvas = forwardRef<HTMLVideoElement, VideoCanvasProps>(functi
           ref={ref}
           src={src}
           playsInline
-          webkit-playsinline="true"
           disablePictureInPicture
           controlsList="nodownload nofullscreen noremoteplayback"
           className="h-full w-full object-contain"

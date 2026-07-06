@@ -170,19 +170,9 @@ export function HaptiBallApp() {
 
   const togglePlay = () => {
     const video = videoRef.current
-    if (!video || !videoSrc) {
-      alert(`DEBUG: video=${!!video}, videoSrc=${!!videoSrc}`)
-      return
-    }
-    alert(`DEBUG: 재생 클릭됨. paused=${video.paused}, duration=${video.duration}`)
-    if (video.paused) {
-      const promise = video.play()
-      if (promise) {
-        promise.then(() => alert("재생 성공")).catch(e => alert("재생 실패: " + e.message))
-      }
-    } else {
-      video.pause()
-    }
+    if (!video || !videoSrc) return
+    if (video.paused) video.play()
+    else video.pause()
   }
 
   const restart = () => {
