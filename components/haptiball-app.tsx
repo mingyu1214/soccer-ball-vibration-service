@@ -54,6 +54,18 @@ export function HaptiBallApp() {
   const [tab, setTab] = useState<"service" | "about">("service")
   const lastLiveSide = useRef<string | null>(null)
 
+  // 모바일/데스크톱 레이아웃은 CSS(md:)로만 나뉘어 있어서 <video>가 둘 다 DOM에
+  // 동시에 존재함 — ref를 두 곳에 나눠주면 안 되니, 실제 보이는 쪽 하나에만
+  // videoRef를 연결하기 위해 현재 화면 크기를 JS로도 추적한다.
+  const [isDesktop, setIsDesktop] = useState(false)
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 768px)")
+    setIsDesktop(mq.matches)
+    const handler = (e: MediaQueryListEvent) => setIsDesktop(e.matches)
+    mq.addEventListener("change", handler)
+    return () => mq.removeEventListener("change", handler)
+  }, [])
+
   useEffect(() => {
     let cancelled = false
     initVibrationBridge().then(() => {
@@ -140,7 +152,7 @@ export function HaptiBallApp() {
     setCurrentTime(t)
     const state = computeBallState(detection, t)
     setBall(state)
-    if (engine?.tickContinuous(performance.now(), state)) {
+    if (!video.paused && engine?.tickContinuous(performance.now(), state)) {
       setPulse(true)
       window.setTimeout(() => setPulse(false), 90)
     }
@@ -353,8 +365,8 @@ export function HaptiBallApp() {
               </div>
             </section>
 
-            {/* 2-1. 영상 — videoSrc가 있을 때만 표시 */}
-            {videoSrc && (
+            {/* 2-1. 영상 — videoSrc가 있을 때만, 모바일 화면일 때만 표시 (ref 중복 방지) */}
+            {videoSrc && !isDesktop && (
             <div className="border-b border-border">
               <VideoCanvas
                 ref={videoRef}
@@ -388,6 +400,7 @@ export function HaptiBallApp() {
           <main className="mx-auto hidden max-w-6xl px-8 py-8 md:block">
             <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
               <div className="flex flex-col gap-5">
+                {isDesktop && (
                 <VideoCanvas
                   ref={videoRef}
                   src={videoSrc}
@@ -400,6 +413,7 @@ export function HaptiBallApp() {
                   onPause={handlePause}
                   onEnded={handleEnded}
                 />
+                )}
                 <section id="controls" className="rounded-2xl border border-border bg-card p-5" aria-label="재생 컨트롤">
                   <div className="flex items-center gap-3">
                     <Button
