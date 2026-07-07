@@ -160,6 +160,7 @@ export function HaptiBallApp() {
     setCurrentTime(t)
     const state = computeBallState(detection, t)
     setBall(state)
+    // 진동은 영상 재생 중에만 발생
     if (!video.paused && engine?.tickContinuous(performance.now(), state)) {
       setPulse(true)
       window.setTimeout(() => setPulse(false), 90)
@@ -191,8 +192,14 @@ export function HaptiBallApp() {
   const togglePlay = () => {
     const video = videoRef.current
     if (!video || !videoSrc) return
-    if (video.paused) video.play()
-    else video.pause()
+    if (video.paused) {
+      video.play()
+        .then(() => setIsPlaying(true))
+        .catch(err => console.error("[v0] Play error:", err.message))
+    } else {
+      video.pause()
+      setIsPlaying(false)
+    }
   }
 
   const restart = () => {
