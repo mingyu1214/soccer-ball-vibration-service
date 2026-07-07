@@ -4,5 +4,11 @@
     "title": "샘플 클립 1",
     "video": "/demos/clip-01/video.mp4",
     "detection": "/demos/clip-01/detection.json"
+  },
+  {
+    "id": "clip-02",
+    "title": "샘플 클립 2",
+    "video": "/demos/clip-02/video.mp4",
+    "detection": "/demos/clip-02/detection.json"
   }
 ]
