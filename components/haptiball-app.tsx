@@ -106,9 +106,14 @@ export function HaptiBallApp() {
     return () => { cancelled = true }
   }, [])
 
+  // 클릭한 클립들의 fetch가 순서대로 응답 온다는 보장이 없어서, 응답이 왔을 때
+  // "지금도 여전히 이 클립이 선택된 상태인지" 확인 후에만 반영한다 (레이스 컨디션 방지)
+  const requestedDemoId = useRef<string | null>(null)
+
   const selectDemo = useCallback(async (demo: DemoClip) => {
     setError(null)
     setActiveDemoId(demo.id)
+    requestedDemoId.current = demo.id
     setVideoSrc((prev) => {
       if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev)
       return demo.video
@@ -117,8 +122,10 @@ export function HaptiBallApp() {
       const res = await fetch(demo.detection)
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
       const parsed = parseDetectionData(await res.json())
+      if (requestedDemoId.current !== demo.id) return // 그 사이 다른 클립으로 바뀌었으면 무시
       applyDetection(parsed, demo.title)
     } catch (e) {
+      if (requestedDemoId.current !== demo.id) return
       setError(`감지 데이터 로드 실패: ${e instanceof Error ? e.message : String(e)}`)
     }
   }, [applyDetection])
@@ -126,6 +133,7 @@ export function HaptiBallApp() {
   // 사용자가 직접 업로드한 영상: 재생만 가능, 진동은 지원하지 않음 (감지 데이터가 없으므로)
   const handleVideoFile = useCallback((file: File) => {
     const url = URL.createObjectURL(file)
+    requestedDemoId.current = null // 진행 중이던 클립 fetch 응답이 와도 무시되게
     setActiveDemoId(null)
     setDetection(null)
     setVideoSrc((prev) => { if (prev && prev.startsWith("blob:")) URL.revokeObjectURL(prev); return url })
