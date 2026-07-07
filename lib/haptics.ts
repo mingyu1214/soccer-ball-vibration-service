@@ -26,6 +26,34 @@ export const DEFAULT_SETTINGS: HapticSettings = {
   fastInterval: 90,
 }
 
+/**
+ * 계단식 7단계 HapticLevel (Vision2Touch iOS 앱 기획 문서 기준)
+ * 속도를 연속 곡선이 아닌, 조정 가능한 7단계(0~6)의 intensity로 매핑한다.
+ */
+export const HAPTIC_LEVELS: readonly number[] = [0, 0.15, 0.3, 0.45, 0.65, 0.85, 1.0]
+
+/**
+ * 레벨별 최소 속도 임계값 (정규화 속도: 화면 폭 대비 초당 이동 비율).
+ * ⚠️ 임시 보정값 — clip-01 실제 감지 데이터(약 665개 속도 샘플)의 백분위수
+ * (p10≈0.006, p40≈0.06, p65≈0.11, p78≈0.19, p87≈0.29, p96≈0.38)를 참고해
+ * 잡은 값이다. iOS 팀 문서에도 "speedRanges가 임시값"이라고 명시되어 있듯,
+ * 영상 종류가 늘어나면 그 속도 분포를 다시 뽑아 재보정해야 한다.
+ */
+const SPEED_LEVEL_THRESHOLDS: readonly number[] = [0, 0.015, 0.05, 0.10, 0.18, 0.28, 0.40]
+
+/** 판정 기준은 각 단계의 최솟값 — 정의 구간 사이 값은 직전(더 낮은) 단계를 유지 */
+export function speedToLevel(speed: number): number {
+  let level = 0
+  for (let i = 0; i < SPEED_LEVEL_THRESHOLDS.length; i++) {
+    if (speed >= SPEED_LEVEL_THRESHOLDS[i]) level = i
+  }
+  return level
+}
+
+export function speedToIntensity(speed: number): number {
+  return HAPTIC_LEVELS[speedToLevel(speed)]
+}
+
 /** 이 기기가 진동을 지원하는지 (웹 Vibration API 또는 네이티브 앱 햅틱) */
 export function isVibrationSupported(): boolean {
   return isVibrationAvailable()
@@ -41,12 +69,6 @@ function eventPattern(type: BallEventType, intensity: number, scale: number): nu
     case "direction":
       // 짧은 더블 탭
       return [s(60), 50, s(60)]
-    case "left":
-      // 왼쪽: 짧은 단발
-      return [s(70)]
-    case "right":
-      // 오른쪽: 긴 단발
-      return [s(160)]
     case "lost":
       // 소실: 페이드 아웃 느낌의 3연타
       return [s(40), 40, s(40), 40, s(40)]
@@ -84,23 +106,28 @@ export class HapticEngine {
 
   /**
    * 지속 진동 틱. 매 애니메이션 프레임마다 현재 시각(ms)과 공 상태로 호출.
-   * 공이 빠를수록 자주, 화면 아래(가까움)일수록 강하게 진동.
+   * 속도를 계단식 7단계(HAPTIC_LEVELS)로 판정해, 레벨이 높을수록 더 자주·더 강하게 진동.
+   * 레벨 0(정지)이면 진동 없음 — 드리블 같은 저속 이동과 슛 같은 고속 이동이
+   * 뚜렷이 구분되도록 하는 게 목적.
    * @returns 이번 틱에 실제로 진동을 발생시켰는지
    */
   tickContinuous(nowMs: number, ball: BallState): boolean {
     if (!this.supported || !this.settings.continuous || !ball.detected) return false
 
+    const level = speedToLevel(ball.speed)
+    if (level === 0) return false // 거의 정지 상태 — 진동 없음
+
     const { slowInterval, fastInterval, intensity } = this.settings
-    // 속도 0~1 로 클램프하여 펄스 간격 보간
-    const speedNorm = Math.min(1, ball.speed / 1.2)
-    const interval = slowInterval + (fastInterval - slowInterval) * speedNorm
+    const levelIntensity = HAPTIC_LEVELS[level]
+    // 레벨(0~6)을 0~1로 정규화해 펄스 간격 보간 (레벨 높을수록 자주)
+    const levelNorm = level / (HAPTIC_LEVELS.length - 1)
+    const interval = slowInterval + (fastInterval - slowInterval) * levelNorm
 
     if (nowMs - this.lastPulseAt < interval) return false
     this.lastPulseAt = nowMs
 
-    // 세로 위치(아래=가까움) + 속도로 펄스 길이 결정
-    const proximity = ball.ny // 0(위) ~ 1(아래)
-    const base = 18 + proximity * 40 + speedNorm * 45
+    // 펄스 길이도 계단식 세기(levelIntensity)로 결정 — 레벨 간 체감 차이를 명확히
+    const base = 20 + levelIntensity * 90
     const dur = Math.max(10, Math.round(base * intensity))
     vibratePattern(dur)
     return true

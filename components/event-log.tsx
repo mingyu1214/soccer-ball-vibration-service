@@ -15,8 +15,6 @@ interface EventLogProps {
 const TYPE_STYLES: Record<BallEventType, string> = {
   shot:      "bg-destructive/15 text-destructive font-black",
   direction: "bg-accent/20 text-accent-foreground font-bold",
-  left:      "bg-primary/15 text-primary font-bold",
-  right:     "bg-primary/15 text-primary font-bold",
   lost:      "bg-muted text-muted-foreground",
   found:     "bg-primary/15 text-primary font-bold",
 }

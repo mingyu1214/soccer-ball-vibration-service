@@ -23,12 +23,6 @@ const EMPTY_BALL: BallState = { detected: false, nx: 0.5, ny: 0.5, speed: 0, ang
 
 type DemoClip = { id: string; title: string; video: string; detection: string }
 
-function horizontalWord(nx: number): string {
-  if (nx < 0.33) return "왼쪽"
-  if (nx > 0.67) return "오른쪽"
-  return "중앙"
-}
-
 export function HaptiBallApp() {
   const videoRef = useRef<HTMLVideoElement>(null)
   const engineRef = useRef<HapticEngine | null>(null)
@@ -160,16 +154,14 @@ export function HaptiBallApp() {
     setCurrentTime(t)
     const state = computeBallState(detection, t)
     setBall(state)
-    // 진동은 영상 재생 중에만 발생
     if (!video.paused && engine?.tickContinuous(performance.now(), state)) {
       setPulse(true)
       window.setTimeout(() => setPulse(false), 90)
     }
-    if (state.detected) {
-      const word = horizontalWord(state.nx)
-      if (word !== lastLiveSide.current) { lastLiveSide.current = word; setLiveStatus(`공 위치: ${word}`) }
-    } else if (lastLiveSide.current !== "lost") {
+    if (!state.detected && lastLiveSide.current !== "lost") {
       lastLiveSide.current = "lost"; setLiveStatus("공을 추적하지 못하고 있습니다")
+    } else if (state.detected && lastLiveSide.current === "lost") {
+      lastLiveSide.current = "found"; setLiveStatus("공을 다시 추적하고 있습니다")
     }
     if (t < lastProcessedT.current - 0.05) {
       lastProcessedT.current = t
@@ -192,14 +184,8 @@ export function HaptiBallApp() {
   const togglePlay = () => {
     const video = videoRef.current
     if (!video || !videoSrc) return
-    if (video.paused) {
-      video.play()
-        .then(() => setIsPlaying(true))
-        .catch(err => console.error("[v0] Play error:", err.message))
-    } else {
-      video.pause()
-      setIsPlaying(false)
-    }
+    if (video.paused) video.play()
+    else video.pause()
   }
 
   const restart = () => {
@@ -224,8 +210,8 @@ export function HaptiBallApp() {
   const statusText = activeEventLabel
     ? activeEventLabel
     : ball.detected
-      ? `공: ${horizontalWord(ball.nx)}`
-      : ready ? "공 추적 대�� 중" : "시연 클립을 선택하세요"
+      ? "공 추적 중"
+      : ready ? "공 추적 대기 중" : "시연 클립을 선택하세요"
 
   return (
     <div className="min-h-screen bg-background">

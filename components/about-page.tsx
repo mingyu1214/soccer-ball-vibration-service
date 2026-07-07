@@ -65,8 +65,8 @@ export function AboutPage() {
             { step: "01", title: "YOLO 객체 감지", desc: "축구 영상에서 YOLOv8 모델이 프레임마다 공의 바운딩 박스와 신뢰도(conf)를 추출합니다." },
             { step: "02", title: "데이터 전처리·필터링", desc: "저신뢰도 프레임 제거, 동일 좌표 반복(freeze) 감지, 이상 점프 필터링으로 노이즈를 정제합니다." },
             { step: "03", title: "운동학 계산", desc: "프레임 간 위치 차분으로 속도·방향·가속도를 계산하고, 선형 보간으로 프레임 간 부드러운 궤적을 생성합니다." },
-            { step: "04", title: "이벤트 감지", desc: "속도 임계값·방향 전환 각도를 기준으로 슛, 방향 전환, 진영 이동, 공 소실 등의 이벤트를 타임라인으로 구성합니다." },
-            { step: "05", title: "진동 피드백 출력", desc: "공 위치(좌/우)와 속도에 따른 지속 진동 패턴과 이벤트별 특수 진동을 Web Vibration API 또는 Capacitor 네이티브 햅틱으로 출력합니다." },
+            { step: "04", title: "이벤트 감지", desc: "속도 임계값·방향 전환 각도를 기준으로 슛, 방향 전환, 공 소실/재추적 등의 이벤트를 타임라인으로 구성합니다." },
+            { step: "05", title: "진동 피드백 출력", desc: "속도를 7단계 계단식 세기(HapticLevel)로 매핑한 지속 진동과 이벤트별 특수 진동을 Web Vibration API 또는 Capacitor 네이티브 햅틱으로 출력합니다." },
           ].map(({ step, title, desc }) => (
             <li key={step} className="flex gap-4">
               <span className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary font-black text-sm text-primary-foreground" aria-hidden="true">
@@ -265,8 +265,7 @@ const ALGOS: { title: string; items: { label: string; desc: string }[] }[] = [
   {
     title: "진동 엔진 동작 방식 (HapticEngine)",
     items: [
-      { label: "지속 진동 (tickContinuous)", desc: "공 속도를 0~1.2 구간으로 정규화해 slowInterval(520ms)~fastInterval(90ms) 사이의 펄스 간격을 선형 보간합니다. 공이 빠를수록 진동이 잦아집니다." },
-      { label: "펄스 길이", desc: "ball.ny(화면 세로 위치, 0=위~1=아래)로 근접도를 표현. duration = 18 + ny×40 + speed×45 ms. 공이 아래쪽(가까운 카메라)일수록 강하게 진동합니다." },
+      { label: "지속 진동 (tickContinuous)", desc: "공 속도를 계단식 7단계(HapticLevel, intensity 0~1.00)로 판정해 레벨이 높을수록 더 자주·더 강하게 진동합니다. 레벨 0(거의 정지)이면 진동하지 않습니다." },
       { label: "이벤트 패턴", desc: "슛=[180~360ms 단발], 방향전환=[60ms, 50, 60ms 더블탭], 소실=[40,40,40,40,40ms 3연타], 재추적=[50,40,90ms]. fireEvent() 호출 후 패턴 총 길이만큼 지속 진동을 억제합니다." },
     ],
   },

@@ -46,8 +46,6 @@ export interface BallState {
 export type BallEventType =
   | "shot" // 급격한 속도 증가 (슛/강한 킥)
   | "direction" // 급격한 방향 전환 (패스/드리블 전환)
-  | "left" // 공이 좌측 진영으로 진입
-  | "right" // 공이 우측 진영으로 진입
   | "lost" // 공 추적 소실
   | "found" // 공 재추적
 
@@ -257,11 +255,11 @@ export function computeBallState(data: DetectionData, t: number): BallState {
 }
 
 /** 이벤트 감지 임계값 */
-// 필터 후 실제 속도 p75 ~ p90 범위를 "빠른 움직임"으로 정의
-const SHOT_SPEED = 3.0   // 정규화 속도(초당 화면폭 배수) 이상이면 슛/강한 킥
+// ⚠️ SHOT_SPEED는 clip-01 실제 속도 분포(정규화, p96≈0.38) 기준 보정값.
+// 기존 3.0은 실제 관측 속도 범위(대부분 0~0.4)보다 훨씬 높아 슛이 사실상 발동하지 않았음.
+// haptics.ts의 SPEED_LEVEL_THRESHOLDS 최고 단계(0.40)와 맞춰, "레벨 6"급 속도에서 슛으로 판정.
+const SHOT_SPEED = 0.4   // 정규화 속도(초당 화면폭 배수) 이상이면 슛/강한 킥
 const DIR_CHANGE = Math.PI / 2.5 // 방향 변화 72도 이상이면 전환 (좀 더 예민하게)
-const SIDE_LEFT = 0.33
-const SIDE_RIGHT = 0.67
 
 /**
  * 전체 감지 데이터를 스캔하여 하이라이트 이벤트 타임라인을 미리 생성.
@@ -278,7 +276,6 @@ export function buildEventTimeline(data: DetectionData, sampleHz = 20): BallEven
 
   let prev: BallState | null = null
   let wasDetected = true
-  let lastSide: "left" | "mid" | "right" | null = null
   let lastEventT: Record<string, number> = {}
 
   const cooldown = (key: string, t: number, gap: number) => {
@@ -314,14 +311,6 @@ export function buildEventTimeline(data: DetectionData, sampleHz = 20): BallEven
           events.push({ type: "direction", t, intensity: Math.min(1, diff / Math.PI) })
         }
       }
-      // 좌/우 진영 진입
-      const side = s.nx < SIDE_LEFT ? "left" : s.nx > SIDE_RIGHT ? "right" : "mid"
-      if (side !== lastSide && side !== "mid") {
-        if (cooldown("side", t, 0.6)) {
-          events.push({ type: side, t, intensity: 0.4 })
-        }
-      }
-      lastSide = side
       prev = s
     } else {
       prev = null
@@ -334,8 +323,6 @@ export function buildEventTimeline(data: DetectionData, sampleHz = 20): BallEven
 export const EVENT_LABELS: Record<BallEventType, string> = {
   shot: "슛 / 강한 킥",
   direction: "방향 전환",
-  left: "좌측 진영",
-  right: "우측 진영",
   lost: "공 추적 소실",
   found: "공 재추적",
 }
